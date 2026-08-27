@@ -1,0 +1,85 @@
+{
+  "expo": {
+    "name": "AR Partner",
+    "slug": "ar-partner",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "ar-partner",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F6EDE4"
+    },
+    "ios": {
+      "bundleIdentifier": "com.aarogyaruchi.partner",
+      "supportsTablet": false,
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Aarogya Ruchi shares your live location with customers while you deliver their orders.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Background location keeps customers updated on your delivery run even when the app is in the background.",
+        "NSCameraUsageDescription": "The camera scans QR codes on package labels to confirm pickups."
+      }
+    },
+    "android": {
+      "package": "com.aarogyaruchi.partner",
+      "adaptiveIcon": {
+        "backgroundColor": "#F6EDE4",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.CAMERA"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F6EDE4",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true,
+          "locationWhenInUsePermission": "Aarogya Ruchi shares your live location with customers while you deliver their orders.",
+          "locationAlwaysAndWhenInUsePermission": "Background location keeps customers updated on your delivery run even when the app is in the background."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "The camera scans QR codes on package labels to confirm pickups."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "89228f43-84e4-4183-849c-09ddb1428f47"
+      }
+    },
+    "owner": "aarogyaruchi"
+  }
+}

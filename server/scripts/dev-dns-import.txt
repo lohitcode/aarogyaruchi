@@ -1,0 +1,28 @@
+; Cloudflare DNS import file — aarogyaruchi.com zone, DEV environment.
+;
+; How to apply (one time): Cloudflare dashboard → aarogyaruchi.com zone →
+; DNS → Records → Import and open this file. Re-importing is safe (existing
+; records are skipped/updated). All three hostnames point at the dedicated
+; dev tunnel bb8db68b-9ab7-46cd-90a3-eeecd8f31acd whose connector container
+; runs on the dev box (server/deploy-dev.sh).
+;
+;   dev-api    → Go API          (public by design; OTP/session auth)
+;   dev-db     → Adminer         (basic auth, user lohit — same password
+;   dev-cache  → redis-commander  as the prod db/cache UIs; Caddyfile.dev)
+;
+; Records MUST be proxied (orange cloud) — the tunnel only receives
+; Cloudflare-edge traffic. Cloudflare imports CNAMEs as proxied by
+; default; verify the orange cloud on all three after importing.
+;
+; NOTE: dev.aarogyaruchi.com (the dev website) is NOT here on purpose —
+; it is a worker custom domain managed automatically by wrangler
+; (`bun run deploy:dev`); a manual record would conflict with it.
+;
+; Cleanup suggestion while you're in there: the stray
+; dev-api.aarogyaruchi.com.lohitcode.com record in the lohitcode.com zone
+; (created by accident) can be deleted.
+
+$ORIGIN aarogyaruchi.com.
+dev-api     1 IN CNAME bb8db68b-9ab7-46cd-90a3-eeecd8f31acd.cfargotunnel.com.
+dev-db      1 IN CNAME bb8db68b-9ab7-46cd-90a3-eeecd8f31acd.cfargotunnel.com.
+dev-cache   1 IN CNAME bb8db68b-9ab7-46cd-90a3-eeecd8f31acd.cfargotunnel.com.

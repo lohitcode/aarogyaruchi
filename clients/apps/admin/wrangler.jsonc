@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "aarogyaruchi-admin",
+  "compatibility_date": "2025-01-26",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@tanstack/react-start/server-entry",
+  "routes": [
+    { "pattern": "admin.aarogyaruchi.com", "custom_domain": true }
+  ]
+}

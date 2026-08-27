@@ -1,0 +1,103 @@
+/*
+ * App stylesheet. All design tokens (colors, radius, fonts, dark mode) live in
+ * the shared preset theme at packages/ui/src/styles/globals.css — this file
+ * only adds app-specific base styles on top.
+ */
+@import "@aarogyaruchi/ui/globals.css";
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    /* Prevent horizontal page over-scroll from off-screen decorative elements.
+       `clip` (not `hidden`) avoids creating a scroll container, so the sticky
+       navbar keeps working. */
+    overflow-x: clip;
+    max-width: 100%;
+  }
+
+  body {
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.6;
+    /* Long Indic words must wrap at narrow widths instead of overflowing. */
+    overflow-wrap: break-word;
+  }
+
+  /*
+   * Telugu and Devanagari scripts are not covered by Inter; fall back to the
+   * Noto fonts (loaded in __root) so translated text renders with a matching
+   * weight instead of a system default.
+   */
+  :lang(te) body,
+  :lang(te) h1,
+  :lang(te) h2,
+  :lang(te) h3,
+  :lang(te) h4,
+  :lang(te) h5,
+  :lang(te) h6 {
+    font-family: "Noto Sans Telugu", "Inter Variable", system-ui, sans-serif;
+  }
+
+  :lang(hi) body,
+  :lang(hi) h1,
+  :lang(hi) h2,
+  :lang(hi) h3,
+  :lang(hi) h4,
+  :lang(hi) h5,
+  :lang(hi) h6 {
+    font-family:
+      "Noto Sans Devanagari", "Inter Variable", system-ui, sans-serif;
+  }
+
+  /*
+   * Editorial display typography — oversized headings, tight tracking.
+   * The section components assume these scales; without them every
+   * section renders cramped.
+   */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    @apply font-normal tracking-tight;
+  }
+
+  h1 {
+    @apply text-6xl md:text-7xl lg:text-8xl;
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    @apply text-4xl md:text-5xl;
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  h3 {
+    @apply text-2xl md:text-3xl;
+    font-weight: 500;
+    line-height: 1.15;
+  }
+
+  h4 {
+    @apply text-xl md:text-2xl;
+    font-weight: 500;
+    line-height: 1.2;
+  }
+
+  p {
+    @apply leading-relaxed;
+  }
+}
+
+/*
+ * Native (non-component) checkboxes in forms: tint with the theme primary
+ * instead of the browser default blue.
+ */
+input[type="checkbox"] {
+  accent-color: var(--primary);
+}

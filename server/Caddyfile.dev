@@ -1,0 +1,18 @@
+# Dev-box UI gate. Runs as a container on the dev podman network in front
+# of Adminer and redis-commander — the dev equivalent of prod's Caddy
+# basic_auth blocks (same user + password hash as the prod Caddyfile).
+# Plain HTTP behind the Cloudflare tunnel; hostnames match the tunnel
+# ingress (see deploy-dev.sh). Never expose these UIs without this gate.
+http://dev-db.aarogyaruchi.com {
+	basic_auth {
+		lohit $2a$14$LCAaGWBp7iDZwm7/u1DfSuwDynKGEsYukwPCqwl6/yNHd/2l/asVe
+	}
+	reverse_proxy adminer:8080
+}
+
+http://dev-cache.aarogyaruchi.com {
+	basic_auth {
+		lohit $2a$14$LCAaGWBp7iDZwm7/u1DfSuwDynKGEsYukwPCqwl6/yNHd/2l/asVe
+	}
+	reverse_proxy redis-commander:8081
+}

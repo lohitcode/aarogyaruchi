@@ -1,0 +1,152 @@
+# Shared log rotation keeps the 2 GB box from filling its disk.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+# One half of the blue-green API pair. Deploy scripts start the idle slot,
+# wait for /health, then stop the old one — Caddy's health-checked
+# reverse_proxy (see Caddyfile) shifts traffic with no failed requests.
+# Both slots carry the network alias "server" so in-network callers that
+# predate the split keep resolving.
+x-server-slot: &server-slot
+  image: aarogya-server:latest
+  restart: unless-stopped
+  logging: *default-logging
+  env_file:
+    - .env
+  environment:
+    - CACHE_URL=valkey:6379
+  depends_on:
+    valkey:
+      condition: service_healthy
+  healthcheck:
+    test: ["CMD-SHELL", "wget -qO- http://localhost:${PORT:-8080}/health || exit 1"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+    start_period: 15s
+  deploy:
+    resources:
+      limits:
+        memory: 512m
+  networks:
+    default:
+      aliases: [server]
+
+services:
+  # Default slot (starts on plain `up -d`; the green slot needs --profile green).
+  # Neither slot publishes host ports: production traffic flows only through
+  # Caddy in-network, and the box's legacy single container (host :8080)
+  # never blocks the bootstrap. Dev/local stacks that need a host port add
+  # it via docker-compose.override.yml.
+  server-blue:
+    <<: *server-slot
+    container_name: aarogya-server-blue
+
+  server-green:
+    <<: *server-slot
+    container_name: aarogya-server-green
+    profiles: ["green"]
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: aarogya-pg
+    restart: unless-stopped
+    profiles: ["local"]
+    logging: *default-logging
+    environment:
+      # Conservative shared_buffers for a 2 GB host running everything.
+      POSTGRES_USER: aarogya
+      POSTGRES_PASSWORD: aarogya123
+      POSTGRES_DB: aarogya_ruchi
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    command: ["postgres", "-c", "shared_buffers=192MB", "-c", "max_connections=60", "-c", "work_mem=4MB"]
+    ports:
+      # Loopback only: containers reach it as "postgres", humans use
+      # db.aarogyaruchi.com (Adminer). Never expose raw Postgres publicly.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aarogya -d aarogya_ruchi"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    container_name: aarogya-valkey
+    restart: unless-stopped
+    logging: *default-logging
+    # noeviction: every key this app writes carries a TTL (sessions, OTP,
+    # rate limits, tracking) and self-expires — a full store must fail
+    # loudly at login, never silently evict live user sessions.
+    # appendfsync always: durability over latency (one fsync per write).
+    command: ["valkey-server", "--maxmemory", "192mb", "--maxmemory-policy", "noeviction", "--appendonly", "yes", "--appendfsync", "always"]
+    ports:
+      # Loopback only: containers reach it as "valkey", humans use
+      # cache.aarogyaruchi.com (redis-commander).
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  # Postgres web UI behind db.aarogyaruchi.com (enabled with --profile proxy).
+  adminer:
+    image: adminer:4
+    container_name: aarogya-adminer
+    restart: unless-stopped
+    profiles: ["proxy"]
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    depends_on:
+      - postgres
+
+  # Valkey web UI behind cache.aarogyaruchi.com (enabled with --profile proxy).
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: aarogya-redis-commander
+    restart: unless-stopped
+    profiles: ["proxy"]
+    environment:
+      REDIS_HOST: valkey
+      REDIS_PORT: "6379"
+    depends_on:
+      - valkey
+
+  # Public HTTPS reverse proxy for the API (enabled with --profile proxy).
+  caddy:
+    image: caddy:2-alpine
+    container_name: aarogya-caddy
+    restart: unless-stopped
+    profiles: ["proxy"]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - server-blue
+
+volumes:
+  pg_data:
+  valkey_data:
+  caddy_data:
+  caddy_config:

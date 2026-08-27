@@ -1,0 +1,20 @@
+# Final runtime image around a prebuilt binary.
+#
+# deploy.sh / deploy-dev.sh cross-compile the Go binary with the native
+# toolchain (fast, no QEMU emulation) and this stage only packages it — the
+# final image is what gets shipped to the server. Prompts are embedded in the
+# binary via go:embed, so nothing else is needed at runtime.
+FROM alpine:3.20
+
+WORKDIR /app
+
+RUN apk add --no-cache ca-certificates tzdata
+
+# BIN selects the prebuilt binary to ship (deploy-dev.sh targets whatever
+# arch the dev box reports; prod deploy.sh keeps the amd64 default).
+ARG BIN=tmp/server-linux-amd64
+COPY ${BIN} ./server
+
+EXPOSE 8080
+
+CMD ["./server"]

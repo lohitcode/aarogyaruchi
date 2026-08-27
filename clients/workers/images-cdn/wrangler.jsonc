@@ -1,0 +1,7 @@
+{
+  "name": "images-cdn",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-01-01",
+  "account_id": "0457dd971eb68eea2c72d1c2599881d2",
+  "r2_buckets": [{ "binding": "R2_BUCKET", "bucket_name": "aarogyaruchi-products" }]
+}

@@ -1,0 +1,34 @@
+# Public HTTPS entrypoints. TLS certificates are issued automatically by
+# Caddy once the DNS records for these hostnames point at this host
+# (Cloudflare: DNS-only/grey-cloud recommended so ACME can reach Caddy).
+
+# Go API (REST + WebSocket). Blue-green: both slots are listed and Caddy's
+# active health checks route around whichever is down (idle, draining, or
+# unhealthy). The config is static across deploys — cutovers happen purely
+# by container health, no reloads needed.
+api.aarogyaruchi.com {
+	reverse_proxy server-blue:8080 server-green:8080 {
+		health_uri /health
+		health_interval 2s
+		health_timeout 2s
+		health_status 200
+		fail_duration 30s
+	}
+}
+
+# Postgres web UI (Adminer). Basic auth keeps the login page off the
+# open internet; the hash below is bcrypt of the deployed password.
+db.aarogyaruchi.com {
+	basic_auth {
+		lohit $2a$14$LCAaGWBp7iDZwm7/u1DfSuwDynKGEsYukwPCqwl6/yNHd/2l/asVe
+	}
+	reverse_proxy adminer:8080
+}
+
+# Valkey (Redis-compatible) web UI. Same basic-auth gate as the DB UI.
+cache.aarogyaruchi.com {
+	basic_auth {
+		lohit $2a$14$LCAaGWBp7iDZwm7/u1DfSuwDynKGEsYukwPCqwl6/yNHd/2l/asVe
+	}
+	reverse_proxy redis-commander:8081
+}

@@ -1,0 +1,51 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+build/
+
+# Go
+*.test
+*.out
+go.work
+go.work.sum
+tmp/
+
+# Environment (.env.example is tracked)
+.env
+.env.local
+.env.prod
+.env.production
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SSH keys
+id_ed25519.pub
+id_ed25519
+
+# Docker volumes (local)
+pg_data/
+valkey_data/
+
+# Playwright
+.playwright/
+.playwright-mcp/
+playwright-report/
+test-results/
+
+# Design reference screenshots (temporary, local-only)
+design-ref/
+
+# Cloudflare Wrangler
+.wrangler/

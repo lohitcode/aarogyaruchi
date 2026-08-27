@@ -1,0 +1,74 @@
+/*
+ * App stylesheet. All design tokens (colors, radius, fonts, dark mode) live in
+ * the shared preset theme at packages/ui/src/styles/globals.css — this file
+ * only adds app-specific base styles on top.
+ */
+@import "@aarogyaruchi/ui/globals.css";
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    /* Prevent horizontal page over-scroll from off-screen decorative elements.
+       `clip` (not `hidden`) avoids creating a scroll container, so the sticky
+       navbar keeps working. */
+    overflow-x: clip;
+    max-width: 100%;
+  }
+
+  body {
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.6;
+    overflow-wrap: break-word;
+  }
+
+  /*
+   * Editorial display typography — oversized headings, tight tracking.
+   * Page headers assume these scales; without them pages render cramped.
+   */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    @apply font-normal tracking-tight;
+  }
+
+  h1 {
+    @apply text-4xl md:text-5xl;
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    @apply text-2xl md:text-3xl;
+    font-weight: 500;
+    line-height: 1.15;
+  }
+
+  h3 {
+    @apply text-xl md:text-2xl;
+    font-weight: 500;
+    line-height: 1.2;
+  }
+
+  h4 {
+    @apply text-lg;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+
+  p {
+    @apply leading-relaxed;
+  }
+}
+
+/*
+ * Native (non-component) checkboxes in forms: tint with the theme primary
+ * instead of the browser default blue.
+ */
+input[type="checkbox"] {
+  accent-color: var(--primary);
+}
