@@ -213,7 +213,7 @@ else
       $IMAGE_NAME:latest ./server -migrate-only
 
     podman run -d --name server --network aarogya-dev --restart=always \
-      --env-file .env -e CACHE_PASSWORD="$VKPW" -p 8080:8080 $IMAGE_NAME:latest >/dev/null
+      --env-file .env -e CACHE_PASSWORD="\$VKPW" -p 8080:8080 $IMAGE_NAME:latest >/dev/null
 
     # DB/cache web UIs (prod parity), gated by the basic-auth caddy above —
     # never route these hostnames straight to adminer/redis-commander.
