@@ -55,7 +55,7 @@ func main() {
 	}
 
 	// Connect to cache
-	c, err := cache.Connect(ctx, cfg.CacheURL)
+	c, err := cache.Connect(ctx, cfg.CacheURL, cfg.CachePassword)
 	if err != nil {
 		log.Fatalf("failed to connect to cache: %v", err)
 	}

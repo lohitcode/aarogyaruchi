@@ -5,14 +5,14 @@
 # ingress (see deploy-dev.sh). Never expose these UIs without this gate.
 http://dev-db.aarogyaruchi.com {
 	basic_auth {
-		lohit $2a$14$LCAaGWBp7iDZwm7/u1DfSuwDynKGEsYukwPCqwl6/yNHd/2l/asVe
+		lohit $2a$14$qRGwospV9.fF1vuwvwAlRO3Hwaie4en1uMsiPWMbi26ZD1VVGNFE.
 	}
 	reverse_proxy adminer:8080
 }
 
 http://dev-cache.aarogyaruchi.com {
 	basic_auth {
-		lohit $2a$14$LCAaGWBp7iDZwm7/u1DfSuwDynKGEsYukwPCqwl6/yNHd/2l/asVe
+		lohit $2a$14$qRGwospV9.fF1vuwvwAlRO3Hwaie4en1uMsiPWMbi26ZD1VVGNFE.
 	}
 	reverse_proxy redis-commander:8081
 }
