@@ -167,7 +167,7 @@ OVR
     # Keep the live DB user in sync with the hydrated secret (env applies
     # only at initdb; the dev volume persists across recreates).
     PGPW=\$(grep '^POSTGRES_PASSWORD=' .env | cut -d= -f2-)
-    docker compose $PROFILE exec -T postgres psql -U aarogya -d aarogyaruchi -c "ALTER USER aarogya WITH PASSWORD '\$PGPW';" </dev/null >/dev/null
+    docker compose $PROFILE exec -T postgres psql -U aarogya -d postgres -c "ALTER USER aarogya WITH PASSWORD '\$PGPW';" </dev/null >/dev/null
     docker compose run --rm -T --no-deps server-blue ./server -migrate-only </dev/null
 
     # --remove-orphans retires the pre-split "server" service container on
@@ -208,7 +208,7 @@ else
     done
     # Existing volume: env password applies only at initdb, so sync the
     # live user with the hydrated secret.
-    podman exec postgres psql -U aarogya -d aarogyaruchi -c "ALTER USER aarogya WITH PASSWORD '\$PGPW';" >/dev/null
+    podman exec postgres psql -U aarogya -d postgres -c "ALTER USER aarogya WITH PASSWORD '\$PGPW';" >/dev/null
     podman run --rm --network aarogya-dev --env-file .env \
       $IMAGE_NAME:latest ./server -migrate-only
 

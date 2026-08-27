@@ -127,7 +127,7 @@ ssh $SERVER << 'EOF'
   # pristine box — initdb picks the env password up instead.
   PW=$(grep '^POSTGRES_PASSWORD=' /app/.env | cut -d= -f2-)
   $COMPOSE up -d postgres </dev/null >/dev/null
-  $COMPOSE exec -T postgres psql -U aarogya -d aarogyaruchi -c "ALTER USER aarogya WITH PASSWORD '$PW';" </dev/null >/dev/null 2>&1 \
+  $COMPOSE exec -T postgres psql -U aarogya -d postgres -c "ALTER USER aarogya WITH PASSWORD '$PW';" </dev/null >/dev/null 2>&1 \
     || echo "    (postgres not reachable for ALTER — initdb path will use the env password)"
 
   # Infra reconcile: a no-op when nothing changed; the API slots are never
