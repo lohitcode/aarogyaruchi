@@ -89,40 +89,26 @@ if [ "$1" = "--reset-db" ]; then
   fi
 fi
 
-# First deploy only: seed the dev .env. Secrets are piped over stdin from
-# the local .env so they never appear in command lines, output, or the repo.
-if ! ssh $SERVER "test -f $DIR/.env"; then
-  ZAI_MODEL=$(grep -E '^ZAI_MODEL=' .env 2>/dev/null | cut -d= -f2)
-  ZAI_BASE_URL=$(grep -E '^ZAI_BASE_URL=' .env 2>/dev/null | cut -d= -f2)
-  PARTNER_SECRET=$(openssl rand -hex 32)
-  echo "==> Seeding $DIR/.env (first deploy)..."
-  ssh $SERVER "cat > $DIR/.env" <<EOF
-ENV=development
-PORT=8080
-DATABASE_URL=postgres://aarogya:aarogyaruchi123@postgres:5432/aarogya_ruchi?sslmode=disable
-CACHE_URL=valkey:6379
-MSG91_AUTH_KEY=
-MSG91_TEMPLATE_ID=
-ZAI_MODEL=${ZAI_MODEL:-glm-4.7}
-ZAI_BASE_URL=${ZAI_BASE_URL:-https://api.z.ai/api/paas/v4}
-CHAT_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8787,http://127.0.0.1:3000,http://127.0.0.1:8787,http://192.168.0.8:3000,$DEV_SITE_ORIGIN,https://aarogyaruchi-user-dev.lohit.workers.dev
-ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8787,http://127.0.0.1:3000,http://127.0.0.1:8787,http://192.168.0.8:3000,$DEV_SITE_ORIGIN,https://aarogyaruchi-user-dev.lohit.workers.dev,$DEV_ADMIN_ORIGIN,https://aarogyaruchi-admin-dev.lohit.workers.dev
-OTP_FIXED_ENABLED=true
-SEED_ADMIN_PHONES=+919000000001
-SEED_PARTNER_PHONES=+919000000002
-PARTNER_TOKEN_SECRET=$PARTNER_SECRET
-SESSION_COOKIE_SAMESITE_NONE=true
-BUSINESS_TIMEZONE=Asia/Kolkata
-IMAGES_CDN_BASE=https://images-cdn.lohit.workers.dev
-EOF
-  # Secrets shared with prod (piped, never printed). R2_UPLOAD_SECRET is
-  # the images-cdn worker's HMAC key — dev uploads land in the same R2
-  # bucket, so only upload obvious test images here.
-  for KEY in ZAI_API_KEY R2_UPLOAD_SECRET VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY VAPID_SUBJECT; do
-    grep "^$KEY=." .env 2>/dev/null | ssh $SERVER "cat >> $DIR/.env" || true
+# Hydrate the dev .env from the sops-encrypted env on every deploy. The
+# box's own age key is the only reader; rotating = edit
+# server/secrets/dev.env (sops), commit, re-run. Replaces the old
+# first-deploy seeding — no plaintext secret ever ships over the wire.
+ssh $SERVER "mkdir -p $DIR/secrets"
+scp -q secrets/dev.env $SERVER:$DIR/secrets/dev.env
+ssh $SERVER << 'HYD'
+  set -e
+  cd ~/aarogya-dev
+  export PATH="$HOME/.local/bin:$PATH"
+  command -v sops >/dev/null || { echo "!! sops not installed on the dev box"; exit 1; }
+  sops -d --output .env.new secrets/dev.env 2>/dev/null
+  chmod 600 .env.new
+  grep -q '^ENV=development$' .env.new || { echo "!! secrets/dev.env: ENV=development missing"; rm -f .env.new; exit 1; }
+  for key in POSTGRES_PASSWORD VALKEY_PASSWORD DATABASE_URL PARTNER_TOKEN_SECRET; do
+    grep -q "^$key=." .env.new || { echo "!! secrets/dev.env: $key missing"; rm -f .env.new; exit 1; }
   done
-  ssh $SERVER "chmod 600 $DIR/.env"
-fi
+  mv .env.new .env
+  echo "==> dev .env hydrated (sops)"
+HYD
 
 echo "==> Preparing dev-api tunnel connector config..."
 # The dedicated tunnel's credentials live on the deploy machine; ship a
@@ -175,9 +161,13 @@ OVR
     echo "==> Running migrations (pre-switch)..."
     docker compose $PROFILE up -d postgres valkey </dev/null
     for i in \$(seq 1 30); do
-      docker compose exec -T postgres pg_isready -U aarogya -d aarogya_ruchi </dev/null >/dev/null 2>&1 && break
+      docker compose exec -T postgres pg_isready -U aarogya -d aarogyaruchi </dev/null >/dev/null 2>&1 && break
       sleep 1
     done
+    # Keep the live DB user in sync with the hydrated secret (env applies
+    # only at initdb; the dev volume persists across recreates).
+    PGPW=\$(grep '^POSTGRES_PASSWORD=' .env | cut -d= -f2-)
+    docker compose $PROFILE exec -T postgres psql -U aarogya -d postgres -c "ALTER USER aarogya WITH PASSWORD '\$PGPW';" </dev/null >/dev/null
     docker compose run --rm -T --no-deps server-blue ./server -migrate-only </dev/null
 
     # --remove-orphans retires the pre-split "server" service container on
@@ -200,32 +190,37 @@ else
     podman volume create aarogya-dev-pg-data >/dev/null 2>&1 || true
     podman volume create aarogya-dev-valkey-data >/dev/null 2>&1 || true
 
+    PGPW=\$(grep '^POSTGRES_PASSWORD=' .env | cut -d= -f2-)
+    VKPW=\$(grep '^VALKEY_PASSWORD=' .env | cut -d= -f2-)
     podman run -d --name postgres --network aarogya-dev --restart=always \
       -v aarogya-dev-pg-data:/var/lib/postgresql/data \
-      -e POSTGRES_USER=aarogya -e POSTGRES_PASSWORD=aarogyaruchi123 -e POSTGRES_DB=aarogya_ruchi \
+      -e POSTGRES_USER=aarogya -e POSTGRES_PASSWORD=\$PGPW -e POSTGRES_DB=aarogya_ruchi \
       docker.io/library/postgres:16-alpine >/dev/null
     podman run -d --name valkey --network aarogya-dev --restart=always \
       -v aarogya-dev-valkey-data:/data \
       docker.io/valkey/valkey:8-alpine \
-      valkey-server --maxmemory 192mb --maxmemory-policy noeviction --appendonly yes --appendfsync always >/dev/null
+      valkey-server --maxmemory 192mb --maxmemory-policy noeviction --appendonly yes --appendfsync always --requirepass "\$VKPW" >/dev/null
 
     echo "==> Running migrations (pre-switch)..."
     for i in \$(seq 1 30); do
-      podman exec postgres pg_isready -U aarogya -d aarogya_ruchi >/dev/null 2>&1 && break
+      podman exec postgres pg_isready -U aarogya -d aarogyaruchi >/dev/null 2>&1 && break
       sleep 1
     done
+    # Existing volume: env password applies only at initdb, so sync the
+    # live user with the hydrated secret.
+    podman exec postgres psql -U aarogya -d postgres -c "ALTER USER aarogya WITH PASSWORD '\$PGPW';" >/dev/null
     podman run --rm --network aarogya-dev --env-file .env \
       $IMAGE_NAME:latest ./server -migrate-only
 
     podman run -d --name server --network aarogya-dev --restart=always \
-      --env-file .env -p 8080:8080 $IMAGE_NAME:latest >/dev/null
+      --env-file .env -e CACHE_PASSWORD="\$VKPW" -p 8080:8080 $IMAGE_NAME:latest >/dev/null
 
     # DB/cache web UIs (prod parity), gated by the basic-auth caddy above —
     # never route these hostnames straight to adminer/redis-commander.
     podman run -d --name adminer --network aarogya-dev --restart=always \
       -e ADMINER_DEFAULT_SERVER=postgres docker.io/library/adminer:4 >/dev/null
     podman run -d --name redis-commander --network aarogya-dev --restart=always \
-      -e REDIS_HOST=valkey -e REDIS_PORT=6379 \
+      -e REDIS_HOST=valkey -e REDIS_PORT=6379 -e REDIS_PASSWORD=\$VKPW \
       docker.io/rediscommander/redis-commander:latest >/dev/null
     podman run -d --name caddy --network aarogya-dev --restart=always \
       --security-opt label=disable \

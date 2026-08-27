@@ -1,0 +1,13 @@
+# SOPS: encrypted env files under server/secrets/ are the source of truth
+# for per-environment secrets. Each file is encrypted with the PUBLIC key of
+# the age keypair that lives ONLY on the target server (and the operator's
+# Mac backup). The dev key cannot decrypt prod and vice versa.
+#
+# Edit:     sops server/secrets/prod.env     (needs ~/.sops/age/prod.key)
+# Rotate:   edit the value, commit, redeploy — hydration happens at deploy.
+# NEVER commit plaintext: scratch files use a .dec suffix (gitignored).
+creation_rules:
+  - path_regex: server/secrets/prod\.env$
+    age: age1qv7gchf90p70fhryh8qm5r0deduyfghjzw0p4f40lvzdu9tgycysvugt87
+  - path_regex: server/secrets/dev\.env$
+    age: age1rf4p7u9d3jgur7hlc2hqkupm5jp3uzmmjv5q46axgqt5cf6cuq0qaqs09z

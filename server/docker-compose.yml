@@ -18,6 +18,7 @@ x-server-slot: &server-slot
     - .env
   environment:
     - CACHE_URL=valkey:6379
+    - CACHE_PASSWORD=${VALKEY_PASSWORD:?set in .env}
   depends_on:
     valkey:
       condition: service_healthy
@@ -59,7 +60,9 @@ services:
     environment:
       # Conservative shared_buffers for a 2 GB host running everything.
       POSTGRES_USER: aarogya
-      POSTGRES_PASSWORD: aarogya123
+      # Real value lives only in the sops-encrypted env file hydrated at
+      # deploy time (server/secrets/*.env). Never hardcode it here again.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
       POSTGRES_DB: aarogya_ruchi
       POSTGRES_INITDB_ARGS: "--data-checksums"
     command: ["postgres", "-c", "shared_buffers=192MB", "-c", "max_connections=60", "-c", "work_mem=4MB"]
@@ -88,7 +91,7 @@ services:
     # rate limits, tracking) and self-expires — a full store must fail
     # loudly at login, never silently evict live user sessions.
     # appendfsync always: durability over latency (one fsync per write).
-    command: ["valkey-server", "--maxmemory", "192mb", "--maxmemory-policy", "noeviction", "--appendonly", "yes", "--appendfsync", "always"]
+    command: ["valkey-server", "--maxmemory", "192mb", "--maxmemory-policy", "noeviction", "--appendonly", "yes", "--appendfsync", "always", "--requirepass", "${VALKEY_PASSWORD:?set in .env}"]
     ports:
       # Loopback only: containers reach it as "valkey", humans use
       # cache.aarogyaruchi.com (redis-commander).
@@ -125,6 +128,7 @@ services:
     environment:
       REDIS_HOST: valkey
       REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${VALKEY_PASSWORD:?set in .env}
     depends_on:
       - valkey
 

@@ -49,3 +49,6 @@ design-ref/
 
 # Cloudflare Wrangler
 .wrangler/
+
+# SOPS plaintext scratch (server/secrets/*.env are ENCRYPTED and tracked)
+server/secrets/*.dec

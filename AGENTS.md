@@ -154,11 +154,31 @@ branch requires typing `prod` at a prompt (no tty = refused). Use
 `AR_DEPLOY_DRY_RUN=1 ./deploy.sh` to print the routing decision only.
 Nothing is built on the server: the binary is cross-compiled locally,
 packaged into the final runtime image, and only that image is shipped
-(with `docker-compose.yml` + `Caddyfile` for prod). `/app/.env` is seeded
-on first deploy from local `server/.env` (Z.AI key piped over stdin;
-never printed or committed). NOTE: this replaces the old flow of shipping
-unmerged branch work to prod — merge to main first, or use the typed
-override for hotfixes.
+(with `docker-compose.yml` + `Caddyfile` for prod). `/app/.env` is
+hydrated on EVERY deploy by decrypting the sops-encrypted
+`server/secrets/prod.env` on the box (see "Secrets" below) — plaintext
+secrets never ship over the wire and never live in git. NOTE: this
+replaces the old flow of shipping unmerged branch work to prod — merge
+to main first, or use the typed override for hotfixes.
+
+### Secrets: SOPS + age (GitHub repo is the store)
+
+`server/secrets/{prod,dev}.env` are **encrypted** dotenv files (SOPS,
+age keys) committed to the repo. Each decrypts ONLY on its target box
+(age private key at `~/.config/sops/age/keys.txt`; `sops` binary on the
+box). The operator's Mac holds backup keys in `~/.sops/age/{prod,dev}.key`.
+
+- **Edit/rotate:** `SOPS_AGE_KEY_FILE=~/.sops/age/prod.key sops server/secrets/prod.env`
+  (or `dev.key` / `dev.env`), commit, re-deploy — hydration is automatic.
+  Rotating `POSTGRES_PASSWORD` needs no extra step: deploys run
+  `ALTER USER` to sync the live database. Never commit plaintext; scratch
+  files use a `.dec` suffix (gitignored).
+- Contains: DB + valkey passwords, `PARTNER_TOKEN_SECRET`, Z.AI/MSG91 keys,
+  VAPID, `R2_UPLOAD_SECRET` (dev's is EMPTY — dev cannot write to the prod
+  image CDN), and `BASIC_AUTH_PASSWORD` (the Caddy gate for the db/cache
+  UIs; the Caddyfiles carry only its bcrypt hash).
+- **Never again:** hardcode `POSTGRES_PASSWORD` in compose, grep secrets
+  out of tracked files in deploy scripts, or share the R2 secret with dev.
 
 ### Dev / regression environment (`dev-server`)
 Separate home-lab box (NOT prod): `ssh dev-server` (Cloudflare tunnel;
@@ -173,9 +193,10 @@ cd server && ./deploy-dev.sh             # same, explicit
 cd server && ./deploy-dev.sh --reset-db  # wipe dev DB + cache volumes
 ```
 
-- Deploy dir `~/aarogya-dev`; dev `.env` seeds fixed OTP `123456`, admin
-  `+919000000001`, partner `+919000000002`; Z.AI/R2/VAPID secrets are
-  piped from local `server/.env` on first deploy.
+- Deploy dir `~/aarogya-dev`; the dev `.env` hydrates from the sops
+  `server/secrets/dev.env` on every deploy (fixed OTP `123456`, admin
+  `+919000000001`, partner `+919000000002`; dev's `R2_UPLOAD_SECRET` is
+  empty — uploads disabled, prod CDN unreachable from dev).
 - Engine auto-detected: docker when usable (post-bootstrap), else rootless
   podman — no sudo needed. Rootless containers survive ssh logout on this
   box but NOT reboot: after a reboot re-run `./deploy-dev.sh` (or

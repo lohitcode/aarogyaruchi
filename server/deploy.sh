@@ -87,49 +87,31 @@ echo "==> Saving image..."
 docker save $IMAGE_NAME | gzip > /tmp/aarogya-server.tar.gz
 
 echo "==> Copying files to server..."
-ssh $SERVER "sudo mkdir -p /app && sudo chown ubuntu:ubuntu /app"
+ssh $SERVER "sudo mkdir -p /app/secrets && sudo chown -R ubuntu:ubuntu /app"
 scp /tmp/aarogya-server.tar.gz $SERVER:/tmp/
 scp docker-compose.yml Caddyfile $SERVER:/app/
-
-# First deploy only: seed /app/.env. The Z.AI key is piped over stdin from
-# the local .env so it never appears in command lines, output, or the repo.
-if ! ssh $SERVER 'test -f /app/.env'; then
-  if ! grep -q '^ZAI_API_KEY=.' .env 2>/dev/null; then
-    echo "!! Server has no /app/.env and the local .env has no ZAI_API_KEY." >&2
-    echo "   Add the key to server/.env and re-run." >&2
-    exit 1
-  fi
-  echo "==> Seeding /app/.env (first deploy)..."
-  PG_USER=$(grep 'POSTGRES_USER:' docker-compose.yml | awk '{print $2}')
-  PG_PASS=$(grep 'POSTGRES_PASSWORD:' docker-compose.yml | awk '{print $2}')
-  PG_DB=$(grep 'POSTGRES_DB:' docker-compose.yml | awk '{print $2}')
-  ssh $SERVER "cat > /app/.env" <<EOF
-ENV=production
-PORT=8080
-DATABASE_URL=postgres://${PG_USER}:${PG_PASS}@postgres:5432/${PG_DB}?sslmode=disable
-CACHE_URL=valkey:6379
-MSG91_AUTH_KEY=
-MSG91_TEMPLATE_ID=
-ZAI_MODEL=glm-4.7
-ZAI_BASE_URL=https://api.z.ai/api/paas/v4
-CHAT_ALLOWED_ORIGINS=https://aarogyaruchi.com
-ALLOWED_ORIGINS=https://aarogyaruchi.com,https://www.aarogyaruchi.com,https://admin.aarogyaruchi.com
-OTP_FIXED_ENABLED=false
-SEED_ADMIN_PHONES=
-SEED_PARTNER_PHONES=
-PARTNER_TOKEN_SECRET=
-BUSINESS_TIMEZONE=Asia/Kolkata
-R2_UPLOAD_SECRET=
-IMAGES_CDN_BASE=https://images-cdn.lohit.workers.dev
-EOF
-  grep '^ZAI_API_KEY=.' .env | ssh $SERVER 'cat >> /app/.env && chmod 600 /app/.env'
-fi
+# sops-encrypted env (ciphertext — the box's age key is the only reader).
+# /app/.env is hydrated from it on every deploy; plaintext never ships.
+scp secrets/prod.env $SERVER:/app/secrets/prod.env
 
 echo "==> Deploying on server (blue-green, zero downtime)..."
 ssh $SERVER << 'EOF'
   set -e
   cd /app
   COMPOSE="sudo docker compose --profile local --profile proxy --profile green"
+
+  # Hydrate /app/.env from the sops-encrypted env, validating shape before
+  # the swap. This replaces the old first-deploy seeding entirely: secrets
+  # rotate by editing server/secrets/prod.env (sops) and re-deploying.
+  command -v sops >/dev/null || { echo "!! sops not installed on this box"; exit 1; }
+  echo "==> Hydrating /app/.env (sops)..."
+  sops -d --output /app/.env.new /app/secrets/prod.env 2>/dev/null
+  chmod 600 /app/.env.new
+  grep -q '^ENV=production$' /app/.env.new || { echo "!! secrets/prod.env: ENV=production missing — refusing to deploy"; rm -f /app/.env.new; exit 1; }
+  for key in POSTGRES_PASSWORD VALKEY_PASSWORD DATABASE_URL PARTNER_TOKEN_SECRET; do
+    grep -q "^$key=." /app/.env.new || { echo "!! secrets/prod.env: $key missing — refusing to deploy"; rm -f /app/.env.new; exit 1; }
+  done
+  mv /app/.env.new /app/.env
 
   # Keep the image that is currently running for one-command rollback:
   #   ssh server 'cd /app && sudo docker tag aarogya-server:previous aarogya-server:latest'
@@ -139,9 +121,20 @@ ssh $SERVER << 'EOF'
   sudo docker load < /tmp/aarogya-server.tar.gz
   rm -f /tmp/aarogya-server.tar.gz
 
+  # Keep the live database user in sync with the rotated secret (the
+  # container env only takes effect at initdb; existing volumes need ALTER).
+  # Socket auth via compose exec needs no password. Skipped harmlessly on a
+  # pristine box — initdb picks the env password up instead.
+  PW=$(grep '^POSTGRES_PASSWORD=' /app/.env | cut -d= -f2-)
+  $COMPOSE up -d postgres </dev/null >/dev/null
+  $COMPOSE exec -T postgres psql -U aarogya -d postgres -c "ALTER USER aarogya WITH PASSWORD '$PW';" </dev/null >/dev/null 2>&1 \
+    || echo "    (postgres not reachable for ALTER — initdb path will use the env password)"
+
   # Infra reconcile: a no-op when nothing changed; the API slots are never
-  # touched here. (Valkey is recreated only when its flags change — a
-  # one-time event; its AOF replays and every session survives.)
+  # touched here. Valkey gets its requirepass the first time these flags
+  # ship (AOF replays; sessions survive). NOTE: the old slot keeps serving
+  # without the valkey password until the cutover below — a one-time
+  # degraded window measured in seconds during this secrets transition.
   $COMPOSE up -d postgres valkey caddy adminer redis-commander </dev/null
   for i in $(seq 1 30); do
     $COMPOSE exec -T postgres pg_isready -U aarogya -d aarogyaruchi </dev/null >/dev/null 2>&1 && break

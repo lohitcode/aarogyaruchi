@@ -52,7 +52,7 @@ func integrationServer(t *testing.T) (http.Handler, *handler.Handler, *sqlc.Quer
 	}
 	t.Cleanup(pool.Close)
 
-	c, err := cache.Connect(ctx, cacheURL)
+	c, err := cache.Connect(ctx, cacheURL, "")
 	if err != nil {
 		t.Fatalf("connect cache: %v", err)
 	}

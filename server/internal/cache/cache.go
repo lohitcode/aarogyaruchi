@@ -16,9 +16,10 @@ type Cache struct {
 	client valkey.Client
 }
 
-func Connect(ctx context.Context, cacheURL string) (*Cache, error) {
+func Connect(ctx context.Context, cacheURL, password string) (*Cache, error) {
 	client, err := valkey.NewClient(valkey.ClientOption{
 		InitAddress: []string{cacheURL},
+		Password:    password,
 	})
 	if err != nil {
 		return nil, err

@@ -20,7 +20,7 @@ api.aarogyaruchi.com {
 # open internet; the hash below is bcrypt of the deployed password.
 db.aarogyaruchi.com {
 	basic_auth {
-		lohit $2a$14$LCAaGWBp7iDZwm7/u1DfSuwDynKGEsYukwPCqwl6/yNHd/2l/asVe
+		lohit $2a$14$qRGwospV9.fF1vuwvwAlRO3Hwaie4en1uMsiPWMbi26ZD1VVGNFE.
 	}
 	reverse_proxy adminer:8080
 }
@@ -28,7 +28,7 @@ db.aarogyaruchi.com {
 # Valkey (Redis-compatible) web UI. Same basic-auth gate as the DB UI.
 cache.aarogyaruchi.com {
 	basic_auth {
-		lohit $2a$14$LCAaGWBp7iDZwm7/u1DfSuwDynKGEsYukwPCqwl6/yNHd/2l/asVe
+		lohit $2a$14$qRGwospV9.fF1vuwvwAlRO3Hwaie4en1uMsiPWMbi26ZD1VVGNFE.
 	}
 	reverse_proxy redis-commander:8081
 }

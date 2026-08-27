@@ -21,7 +21,7 @@ func newStore(t *testing.T, ttl time.Duration) (*session.Store, *cache.Cache) {
 		t.Skip("AR_TEST_CACHE_URL not set; skipping session test")
 	}
 	ctx := context.Background()
-	c, err := cache.Connect(ctx, url)
+	c, err := cache.Connect(ctx, url, os.Getenv("AR_TEST_CACHE_PASSWORD"))
 	if err != nil {
 		t.Fatalf("connect cache: %v", err)
 	}

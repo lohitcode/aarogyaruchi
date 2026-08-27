@@ -14,6 +14,7 @@ type Config struct {
 	Port            string
 	DatabaseURL     string
 	CacheURL        string
+	CachePassword   string
 	MSG91AuthKey    string
 	MSG91TemplateID string
 	ZAI             struct {
@@ -78,6 +79,7 @@ func Load() (*Config, error) {
 		Port:            getEnv("PORT", "8080"),
 		DatabaseURL:     getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/aarogya_ruchi?sslmode=disable"),
 		CacheURL:        getEnv("CACHE_URL", "localhost:6379"),
+		CachePassword:   getEnv("CACHE_PASSWORD", ""),
 		MSG91AuthKey:    getEnv("MSG91_AUTH_KEY", ""),
 		MSG91TemplateID: getEnv("MSG91_TEMPLATE_ID", ""),
 	}
@@ -98,7 +100,9 @@ func Load() (*Config, error) {
 		"https://admin.aarogyaruchi.com",
 		"http://localhost:3000",
 	})
-	cfg.OTPFixedEnabled = getEnvBool("OTP_FIXED_ENABLED", cfg.IsDev())
+	// Fail closed: fixed OTP must be opted into explicitly (dev env files
+	// set it to true); a missing flag must never enable it anywhere.
+	cfg.OTPFixedEnabled = getEnvBool("OTP_FIXED_ENABLED", false)
 	cfg.SeedAdminPhones = getEnvList("SEED_ADMIN_PHONES", nil)
 	cfg.SeedPartnerPhones = getEnvList("SEED_PARTNER_PHONES", nil)
 	cfg.PartnerTokenSecret = getEnv("PARTNER_TOKEN_SECRET", "")
