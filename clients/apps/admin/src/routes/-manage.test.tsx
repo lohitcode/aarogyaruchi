@@ -127,24 +127,37 @@ describe("AdminManage products tab", () => {
     expect(trigger.textContent).toContain("Desserts")
   })
 
-  it("hides the heading and tabs while a product editor is open", async () => {
+  it("hides the heading while a product editor is open", async () => {
     renderManage()
     await waitFor(() => expect(screen.getByText("Alpha Drink")).toBeTruthy())
 
     expect(screen.getByRole("heading", { name: "Manage" })).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Products" })).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Settings" })).toBeTruthy()
 
     fireEvent.click(screen.getByRole("button", { name: "New product" }))
 
     expect(screen.queryByRole("heading", { name: "Manage" })).toBeNull()
-    expect(screen.queryByRole("button", { name: "Products" })).toBeNull()
-    expect(screen.queryByRole("button", { name: "Settings" })).toBeNull()
     expect(screen.getByRole("heading", { name: "New product" })).toBeTruthy()
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }))
     expect(screen.getByRole("heading", { name: "Manage" })).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Products" })).toBeTruthy()
+  })
+
+  it("renders the tab passed from the URL search param", async () => {
+    stubFetch(CATALOG)
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={client}>
+        <AdminManage tab="Localities" />
+      </QueryClientProvider>,
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "+ Add locality" })).toBeTruthy(),
+    )
+    // Products list must not be fetched/rendered on another tab.
+    expect(screen.queryByRole("button", { name: "New product" })).toBeNull()
+    cleanup()
+    vi.unstubAllGlobals()
   })
 
   it("filters rows by the search box", async () => {

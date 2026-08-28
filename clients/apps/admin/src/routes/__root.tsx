@@ -12,19 +12,44 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   BarChart3,
   Bike,
+  ChevronDown,
   ClipboardList,
   LayoutDashboard,
   LogOut,
-  Menu,
   Package,
   Settings,
   Users,
   Wallet,
-  X,
 } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@aarogyaruchi/ui/components/collapsible";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarSeparator,
+  SidebarTrigger,
+  useSidebar,
+} from "@aarogyaruchi/ui/components/sidebar";
 
 import appCss from "../styles.css?url";
 import { fetchAdminSession, type AdminSession } from "../lib/admin";
+import { MANAGE_TABS } from "./manage";
 import { ServiceWorkerRegister } from "../components/service-worker-register";
 import { NotificationBanner } from "../components/notification-banner";
 
@@ -44,8 +69,7 @@ const NAV = [
   { to: "/runs", label: "Delivery runs", icon: Bike },
   { to: "/live", label: "Live map", icon: BarChart3 },
   { to: "/cash", label: "Cash", icon: Wallet },
-  { to: "/manage", label: "Manage", icon: Settings },
-];
+] as const;
 
 export const Route = createRootRoute({
   head: () => ({
@@ -126,7 +150,6 @@ function AdminRoot() {
 function AdminShell() {
   const [admin, setAdmin] = useState<AdminSession | null>(null);
   const [loading, setLoading] = useState(true);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -144,23 +167,6 @@ function AdminShell() {
       }
     });
   }, [navigate, location.pathname]);
-
-  useEffect(() => {
-    setDrawerOpen(false);
-  }, [location.pathname]);
-
-  useEffect(() => {
-    if (!drawerOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setDrawerOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [drawerOpen]);
 
   const logout = async () => {
     const { API_BASE_URL } = await import("../config/api");
@@ -188,121 +194,151 @@ function AdminShell() {
   const who = admin.name || admin.phone;
 
   return (
-    <div className="flex min-h-screen bg-neutral-50">
-      <aside className="sticky top-0 hidden h-screen w-56 flex-col border-r border-neutral-200 bg-white lg:flex">
-        <SidebarContent
-          admin={admin}
-          pathname={location.pathname}
-          onLogout={logout}
-        />
-      </aside>
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-3 lg:hidden">
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            aria-label="Open navigation menu"
-            className="border border-neutral-300 p-1.5 text-neutral-700 hover:bg-neutral-50"
-          >
-            <Menu className="h-4 w-4" />
-          </button>
+    <SidebarProvider>
+      <AppSidebar
+        admin={admin}
+        pathname={location.pathname}
+        search={location.search}
+        onLogout={logout}
+      />
+      <SidebarInset className="bg-neutral-50">
+        {/* Mobile header: on <md the sidebar collapses into a Sheet drawer
+            opened by this trigger. Desktop keeps the full sidebar (plus the
+            hover rail / Ctrl-B shortcut to slide it away). */}
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-3 md:hidden">
+          <SidebarTrigger />
           <p className="text-sm font-semibold text-neutral-900">
             AR Operations
           </p>
           <p className="min-w-0 truncate text-xs text-neutral-500">{who}</p>
         </header>
 
-        {drawerOpen && (
-          <div className="fixed inset-0 z-40 lg:hidden">
-            <button
-              type="button"
-              aria-label="Close navigation menu"
-              onClick={() => setDrawerOpen(false)}
-              className="absolute inset-0 h-full w-full cursor-default bg-neutral-900/40"
-            />
-            <aside className="absolute inset-y-0 left-0 flex w-64 flex-col border-r border-neutral-200 bg-white">
-              <button
-                type="button"
-                onClick={() => setDrawerOpen(false)}
-                aria-label="Close menu"
-                className="absolute top-3 right-3 z-10 p-1.5 text-neutral-400 hover:text-neutral-900"
-              >
-                <X className="h-5 w-5" />
-              </button>
-              <SidebarContent
-                admin={admin}
-                pathname={location.pathname}
-                onNavigate={() => setDrawerOpen(false)}
-                onLogout={logout}
-              />
-            </aside>
-          </div>
-        )}
-
         {/* Nudge to allow notifications (chat + new-order alerts);
             re-checked on every app open, above the page content so it shows
             on desktop and mobile alike. */}
         <NotificationBanner />
 
-        <main className="flex min-w-0 flex-1 flex-col p-4 sm:p-6 lg:p-8">
+        <div className="flex min-w-0 flex-1 flex-col p-4 sm:p-6 lg:p-8">
           <Outlet />
-        </main>
-      </div>
-    </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 
-function SidebarContent({
+/**
+ * Sidebar nav. "Manage" is a collapsible item whose sub-items are the
+ * manage tabs (Products/Localities/Partners/Admins/Settings) — they link
+ * to /manage?tab=<key> so the active tab is URL-driven and shareable.
+ * Sub-items a non-super admin can't reach are hidden here; the manage page
+ * still guards direct URL hits.
+ */
+function AppSidebar({
   admin,
   pathname,
-  onNavigate,
+  search,
   onLogout,
 }: {
   admin: AdminSession;
   pathname: string;
-  onNavigate?: () => void;
+  search: { tab?: string };
   onLogout: () => void;
 }) {
+  const { setOpenMobile } = useSidebar();
+  const isSuper = admin.role === "super_admin";
+  const manageActive = pathname.startsWith("/manage");
+  const manageTab = search.tab ?? "products";
+  // Close the mobile drawer on any navigation.
+  const closeDrawer = () => setOpenMobile(false);
+
   return (
-    <>
-      <div className="border-b border-neutral-200 px-4 py-5">
-        <p className="text-sm font-semibold text-neutral-900">AR Operations</p>
-        <p className="mt-0.5 text-xs text-neutral-500">
+    <Sidebar collapsible="offcanvas">
+      <SidebarHeader className="p-4">
+        <p className="text-sm font-semibold text-foreground">
+          AR Operations
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
           {admin.name || admin.phone}
         </p>
-        <p className="mt-0.5 text-[10px] tracking-wide text-neutral-400 uppercase">
+        <p className="mt-0.5 text-[10px] tracking-wide text-muted-foreground/70 uppercase">
           {admin.role.replace("_", " ")}
         </p>
-      </div>
-      <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
-        {NAV.map(({ to, label, icon: Icon }) => {
-          const active = pathname.startsWith(to);
-          return (
-            <Link
-              key={to}
-              to={to}
-              onClick={onNavigate}
-              className={`flex items-center gap-2.5 rounded px-3 py-2 text-sm transition-colors ${
-                active
-                  ? "bg-neutral-900 font-medium text-white"
-                  : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
-              }`}
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-            </Link>
-          );
-        })}
-      </nav>
-      <button
-        type="button"
-        onClick={onLogout}
-        className="flex items-center gap-2.5 border-t border-neutral-200 px-5 py-4 text-sm text-neutral-600 hover:text-neutral-900"
-      >
-        <LogOut className="h-4 w-4" />
-        Sign out
-      </button>
-    </>
+      </SidebarHeader>
+      <SidebarSeparator />
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {NAV.map(({ to, label, icon: Icon }) => (
+                <SidebarMenuItem key={to}>
+                  <SidebarMenuButton
+                    isActive={pathname.startsWith(to)}
+                    render={
+                      <Link to={to} onClick={closeDrawer} />
+                    }
+                  >
+                    <Icon />
+                    <span>{label}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+
+              <SidebarMenuItem>
+                <Collapsible
+                  defaultOpen={manageActive}
+                  className="group/collapsible"
+                >
+                  <CollapsibleTrigger
+                    render={<SidebarMenuButton isActive={manageActive} />}
+                  >
+                    <Settings />
+                    <span>Manage</span>
+                    <ChevronDown className="ml-auto transition-transform group-data-open/collapsible:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {MANAGE_TABS.filter(
+                        (t) =>
+                          isSuper ||
+                          t.key === "products" ||
+                          t.key === "localities"
+                      ).map((t) => (
+                        <SidebarMenuSubItem key={t.key}>
+                          <SidebarMenuSubButton
+                            isActive={manageActive && manageTab === t.key}
+                            render={
+                              <Link
+                                to="/manage"
+                                search={{ tab: t.key }}
+                                onClick={closeDrawer}
+                              />
+                            }
+                          >
+                            <span>{t.label}</span>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </Collapsible>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={onLogout}>
+              <LogOut />
+              <span>Sign out</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
   );
 }

@@ -23,9 +23,18 @@ import {
 import { ImageUpload } from "../components/admin/image-upload";
 import { LocalityDialog } from "../components/admin/locality-dialog";
 
-export const Route = createFileRoute("/manage")({
-  component: AdminManage,
-});
+// Tabs live in the sidebar as a collapsible sub-menu (routes/__root.tsx),
+// so the active tab is carried by the URL (?tab=<key>) instead of local
+// state. Keys are the URL form; Tab values are the internal labels.
+export const MANAGE_TABS = [
+  { key: "products", label: "Products" },
+  { key: "localities", label: "Localities" },
+  { key: "partners", label: "Partners" },
+  { key: "admins", label: "Admins" },
+  { key: "settings", label: "Settings" },
+] as const;
+export type ManageTabKey = (typeof MANAGE_TABS)[number]["key"];
+const MANAGE_TAB_KEYS = MANAGE_TABS.map((t) => t.key);
 
 const TABS = [
   "Products",
@@ -35,11 +44,33 @@ const TABS = [
   "Settings",
 ] as const;
 type Tab = (typeof TABS)[number];
+const TAB_BY_KEY: Record<ManageTabKey, Tab> = {
+  products: "Products",
+  localities: "Localities",
+  partners: "Partners",
+  admins: "Admins",
+  settings: "Settings",
+};
 
-export function AdminManage() {
-  const [tab, setTab] = useState<Tab>("Products");
+export const Route = createFileRoute("/manage")({
+  validateSearch: (input: Record<string, unknown>): { tab?: ManageTabKey } => {
+    const { tab } = input;
+    return typeof tab === "string" &&
+      MANAGE_TAB_KEYS.includes(tab as ManageTabKey)
+      ? { tab: tab as ManageTabKey }
+      : {};
+  },
+  component: ManageRoute,
+});
+
+function ManageRoute() {
+  const { tab } = Route.useSearch();
+  return <AdminManage tab={TAB_BY_KEY[tab ?? "products"]} />;
+}
+
+export function AdminManage({ tab = "Products" }: { tab?: Tab }) {
   // The product editor is a focused full-page view: while it is open the
-  // heading + tab strip step aside.
+  // heading steps aside.
   const [editorOpen, setEditorOpen] = useState(false);
   const handleEditingChange = useCallback(
     (open: boolean) => setEditorOpen(open),
@@ -51,25 +82,7 @@ export function AdminManage() {
   return (
     <div>
       {!editorOpen && (
-        <>
-          <h1 className="text-xl font-semibold text-neutral-900">Manage</h1>
-          <div className="mt-4 flex gap-1 overflow-x-auto border-b border-neutral-200">
-            {TABS.map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTab(t)}
-                className={`shrink-0 px-3 py-2 text-sm whitespace-nowrap ${
-                  tab === t
-                    ? "-mb-px border-b-2 border-neutral-900 font-medium text-neutral-900"
-                    : "text-neutral-500 hover:text-neutral-800"
-                }`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        </>
+        <h1 className="text-xl font-semibold text-neutral-900">Manage</h1>
       )}
 
       {!isSuper && tab !== "Products" && tab !== "Localities" ? (
