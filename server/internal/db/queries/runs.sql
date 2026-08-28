@@ -20,6 +20,12 @@ WHERE (sqlc.narg('delivery_date')::DATE IS NULL OR r.delivery_date = sqlc.narg('
 ORDER BY r.id DESC
 LIMIT COALESCE(@max_rows, 100);
 
+-- name: DashboardRunCounts :one
+SELECT (COUNT(*) FILTER (WHERE status IN ('dispatched', 'in_progress')))::BIGINT AS active_count,
+       COUNT(*)::BIGINT AS run_count
+FROM delivery_runs
+WHERE delivery_date BETWEEN $1 AND $2;
+
 -- name: ListRunsForPartner :many
 SELECT r.*,
        (SELECT COUNT(*) FROM run_stops rs WHERE rs.run_id = r.id)::BIGINT AS stop_count

@@ -66,6 +66,7 @@ export type AdminDashboardData = {
     total_paise: number
     created_at: string
   }>
+  range?: { start: string; end: string }
 }
 
 export type AdminOrderRow = {
@@ -205,8 +206,12 @@ export type AdminUserDetail = {
 }
 
 export const adminApi = {
-  dashboard: (deliveryDate?: string) =>
-    api.get<AdminDashboardData>(`/v1/admin/dashboard${deliveryDate ? `?delivery_date=${deliveryDate}` : ""}`),
+  dashboard: (range?: { start: string; end: string }) =>
+    api.get<AdminDashboardData>(
+      `/v1/admin/dashboard${
+        range ? `?start=${encodeURIComponent(range.start)}&end=${encodeURIComponent(range.end)}` : ""
+      }`,
+    ),
   orders: (query: string) => api.get<{ orders: AdminOrderRow[] }>(`/v1/admin/orders${query}`),
   orderDetail: (id: number) => api.get<Record<string, unknown>>(`/v1/admin/orders/${id}`),
   setOrderStatus: (id: number, status: string, note?: string) =>

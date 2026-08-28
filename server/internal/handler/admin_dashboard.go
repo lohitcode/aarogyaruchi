@@ -9,8 +9,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+// maxDashboardRange bounds the placed-time window so a stray query cannot
+// scan the whole table.
+const maxDashboardRange = 366 * 24 * time.Hour
+
 // AdminDashboard aggregates the day at a glance: status buckets, totals,
 // active runs, and orders needing action.
+//
+// Day mode (default): delivery_date = today, overridable via
+// ?delivery_date=YYYY-MM-DD. Range mode: ?start and ?end (both required,
+// RFC3339) switch the order aggregates to the placed-time window
+// [start, end) and count runs across the covered delivery dates.
 func (h *Handler) AdminDashboard(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -24,7 +33,41 @@ func (h *Handler) AdminDashboard(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	counts, err := h.queries.DashboardStatusCounts(ctx, deliveryDate)
+	var startTS, endTS pgtype.Timestamptz
+	if v := r.URL.Query().Get("start"); v != "" || r.URL.Query().Get("end") != "" {
+		s, err := time.Parse(time.RFC3339, r.URL.Query().Get("start"))
+		if err != nil {
+			h.Error(w, http.StatusBadRequest, "invalid start (use RFC3339, e.g. 2026-08-28T18:30:00Z)")
+			return
+		}
+		e, err := time.Parse(time.RFC3339, r.URL.Query().Get("end"))
+		if err != nil {
+			h.Error(w, http.StatusBadRequest, "invalid end (use RFC3339, e.g. 2026-08-29T18:30:00Z)")
+			return
+		}
+		if !s.Before(e) {
+			h.Error(w, http.StatusBadRequest, "start must be before end")
+			return
+		}
+		if e.Sub(s) > maxDashboardRange {
+			h.Error(w, http.StatusBadRequest, "range too wide (max 366 days)")
+			return
+		}
+		startTS, endTS = pgTS(s), pgTS(e)
+	}
+
+	// Range mode filters on placed time only; the delivery-date filter
+	// stays unset so the two modes never combine.
+	filterDate := deliveryDate
+	if startTS.Valid {
+		filterDate = pgtype.Date{}
+	}
+
+	counts, err := h.queries.DashboardStatusCounts(ctx, sqlc.DashboardStatusCountsParams{
+		DeliveryDate: filterDate,
+		StartTs:      startTS,
+		EndTs:        endTS,
+	})
 	if err != nil {
 		h.Error(w, http.StatusInternalServerError, "failed to aggregate orders")
 		return
@@ -38,21 +81,38 @@ func (h *Handler) AdminDashboard(w http.ResponseWriter, r *http.Request) {
 		orderCount += c.Count
 	}
 
-	runs, err := h.queries.ListDeliveryRuns(ctx, sqlc.ListDeliveryRunsParams{
-		DeliveryDate: deliveryDate,
-	})
-	if err != nil {
-		h.Error(w, http.StatusInternalServerError, "failed to fetch runs")
-		return
-	}
-	activeRuns := 0
-	for _, run := range runs {
-		if run.Status == "dispatched" || run.Status == "in_progress" {
-			activeRuns++
+	activeRuns, runCount := 0, 0
+	if startTS.Valid {
+		rc, err := h.queries.DashboardRunCounts(ctx, sqlc.DashboardRunCountsParams{
+			DeliveryDate:   pgtypeDateOf(startTS.Time.In(h.businessTimezone())),
+			DeliveryDate_2: pgtypeDateOf(endTS.Time.In(h.businessTimezone())),
+		})
+		if err != nil {
+			h.Error(w, http.StatusInternalServerError, "failed to fetch runs")
+			return
+		}
+		activeRuns, runCount = int(rc.ActiveCount), int(rc.RunCount)
+	} else {
+		runs, err := h.queries.ListDeliveryRuns(ctx, sqlc.ListDeliveryRunsParams{
+			DeliveryDate: deliveryDate,
+		})
+		if err != nil {
+			h.Error(w, http.StatusInternalServerError, "failed to fetch runs")
+			return
+		}
+		runCount = len(runs)
+		for _, run := range runs {
+			if run.Status == "dispatched" || run.Status == "in_progress" {
+				activeRuns++
+			}
 		}
 	}
 
-	attention, err := h.queries.OrdersNeedingAttention(ctx, deliveryDate)
+	attention, err := h.queries.OrdersNeedingAttention(ctx, sqlc.OrdersNeedingAttentionParams{
+		DeliveryDate: filterDate,
+		StartTs:      startTS,
+		EndTs:        endTS,
+	})
 	if err != nil {
 		h.Error(w, http.StatusInternalServerError, "failed to fetch pending orders")
 		return
@@ -69,15 +129,22 @@ func (h *Handler) AdminDashboard(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	h.JSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"delivery_date":   deliveryDate.Time.Format("2006-01-02"),
 		"order_count":     orderCount,
 		"total_paise":     totalPaise,
 		"by_status":       statusCounts,
 		"active_runs":     activeRuns,
-		"run_count":       len(runs),
+		"run_count":       runCount,
 		"needs_attention": attentionViews,
-	})
+	}
+	if startTS.Valid {
+		resp["range"] = map[string]string{
+			"start": startTS.Time.Format(time.RFC3339),
+			"end":   endTS.Time.Format(time.RFC3339),
+		}
+	}
+	h.JSON(w, http.StatusOK, resp)
 }
 
 // pgtypeDateOf converts a wall-clock time to a pg date value.

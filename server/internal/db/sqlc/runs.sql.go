@@ -195,6 +195,30 @@ func (q *Queries) CreateDeliveryRun(ctx context.Context, arg CreateDeliveryRunPa
 	return i, err
 }
 
+const dashboardRunCounts = `-- name: DashboardRunCounts :one
+SELECT (COUNT(*) FILTER (WHERE status IN ('dispatched', 'in_progress')))::BIGINT AS active_count,
+       COUNT(*)::BIGINT AS run_count
+FROM delivery_runs
+WHERE delivery_date BETWEEN $1 AND $2
+`
+
+type DashboardRunCountsParams struct {
+	DeliveryDate   pgtype.Date
+	DeliveryDate_2 pgtype.Date
+}
+
+type DashboardRunCountsRow struct {
+	ActiveCount int64
+	RunCount    int64
+}
+
+func (q *Queries) DashboardRunCounts(ctx context.Context, arg DashboardRunCountsParams) (DashboardRunCountsRow, error) {
+	row := q.db.QueryRow(ctx, dashboardRunCounts, arg.DeliveryDate, arg.DeliveryDate_2)
+	var i DashboardRunCountsRow
+	err := row.Scan(&i.ActiveCount, &i.RunCount)
+	return i, err
+}
+
 const dispatchRun = `-- name: DispatchRun :execrows
 UPDATE delivery_runs
 SET status = 'dispatched', dispatched_at = NOW(), updated_at = NOW()

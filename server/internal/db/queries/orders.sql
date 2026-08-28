@@ -141,19 +141,26 @@ JOIN users u ON u.id = o.user_id
 WHERE rs.run_id = $1
 ORDER BY rs.position;
 
+-- Dashboard aggregation filters: day mode passes delivery_date only,
+-- range mode passes start_ts/end_ts (placed-time window) only.
+-- Param is end_ts because END is a reserved SQL word.
 -- name: DashboardStatusCounts :many
 SELECT status,
        COUNT(*)::BIGINT AS count,
        COALESCE(SUM(total_amount_paise), 0)::BIGINT AS total_paise
 FROM orders
-WHERE delivery_date = $1
+WHERE (sqlc.narg('delivery_date')::DATE IS NULL OR delivery_date = sqlc.narg('delivery_date'))
+  AND (sqlc.narg('start_ts')::TIMESTAMPTZ IS NULL OR created_at >= sqlc.narg('start_ts'))
+  AND (sqlc.narg('end_ts')::TIMESTAMPTZ IS NULL OR created_at < sqlc.narg('end_ts'))
 GROUP BY status;
 
 -- name: OrdersNeedingAttention :many
 SELECT o.*, u.name AS user_name, u.phone AS user_phone
 FROM orders o
 JOIN users u ON u.id = o.user_id
-WHERE o.delivery_date = $1
+WHERE (sqlc.narg('delivery_date')::DATE IS NULL OR o.delivery_date = sqlc.narg('delivery_date'))
+  AND (sqlc.narg('start_ts')::TIMESTAMPTZ IS NULL OR o.created_at >= sqlc.narg('start_ts'))
+  AND (sqlc.narg('end_ts')::TIMESTAMPTZ IS NULL OR o.created_at < sqlc.narg('end_ts'))
   AND o.status IN ('placed', 'confirmed', 'preparing')
-ORDER BY o.id
+ORDER BY o.created_at DESC, o.id DESC
 LIMIT 20;

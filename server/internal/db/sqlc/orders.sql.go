@@ -241,9 +241,17 @@ SELECT status,
        COUNT(*)::BIGINT AS count,
        COALESCE(SUM(total_amount_paise), 0)::BIGINT AS total_paise
 FROM orders
-WHERE delivery_date = $1
+WHERE ($1::DATE IS NULL OR delivery_date = $1)
+  AND ($2::TIMESTAMPTZ IS NULL OR created_at >= $2)
+  AND ($3::TIMESTAMPTZ IS NULL OR created_at < $3)
 GROUP BY status
 `
+
+type DashboardStatusCountsParams struct {
+	DeliveryDate pgtype.Date
+	StartTs      pgtype.Timestamptz
+	EndTs        pgtype.Timestamptz
+}
 
 type DashboardStatusCountsRow struct {
 	Status     pgtype.Text
@@ -251,8 +259,11 @@ type DashboardStatusCountsRow struct {
 	TotalPaise int64
 }
 
-func (q *Queries) DashboardStatusCounts(ctx context.Context, deliveryDate pgtype.Date) ([]DashboardStatusCountsRow, error) {
-	rows, err := q.db.Query(ctx, dashboardStatusCounts, deliveryDate)
+// Dashboard aggregation filters: day mode passes delivery_date only,
+// range mode passes start_ts/end_ts (placed-time window) only.
+// Param is end_ts because END is a reserved SQL word.
+func (q *Queries) DashboardStatusCounts(ctx context.Context, arg DashboardStatusCountsParams) ([]DashboardStatusCountsRow, error) {
+	rows, err := q.db.Query(ctx, dashboardStatusCounts, arg.DeliveryDate, arg.StartTs, arg.EndTs)
 	if err != nil {
 		return nil, err
 	}
@@ -923,11 +934,19 @@ const ordersNeedingAttention = `-- name: OrdersNeedingAttention :many
 SELECT o.id, o.user_id, o.delivery_date, o.delivery_partner_id, o.assigned_at, o.status, o.payment_method, o.created_at, o.updated_at, o.total_amount_paise, o.code, o.batch_id, o.package_token, o.ship_address_line, o.ship_landmark, o.ship_locality_id, o.ship_latitude, o.ship_longitude, o.ship_accuracy_m, o.ship_instructions, o.delivered_at, o.delivery_note, o.failure_reason, o.updated_by_actor, u.name AS user_name, u.phone AS user_phone
 FROM orders o
 JOIN users u ON u.id = o.user_id
-WHERE o.delivery_date = $1
+WHERE ($1::DATE IS NULL OR o.delivery_date = $1)
+  AND ($2::TIMESTAMPTZ IS NULL OR o.created_at >= $2)
+  AND ($3::TIMESTAMPTZ IS NULL OR o.created_at < $3)
   AND o.status IN ('placed', 'confirmed', 'preparing')
-ORDER BY o.id
+ORDER BY o.created_at DESC, o.id DESC
 LIMIT 20
 `
+
+type OrdersNeedingAttentionParams struct {
+	DeliveryDate pgtype.Date
+	StartTs      pgtype.Timestamptz
+	EndTs        pgtype.Timestamptz
+}
 
 type OrdersNeedingAttentionRow struct {
 	ID                int64
@@ -958,8 +977,8 @@ type OrdersNeedingAttentionRow struct {
 	UserPhone         string
 }
 
-func (q *Queries) OrdersNeedingAttention(ctx context.Context, deliveryDate pgtype.Date) ([]OrdersNeedingAttentionRow, error) {
-	rows, err := q.db.Query(ctx, ordersNeedingAttention, deliveryDate)
+func (q *Queries) OrdersNeedingAttention(ctx context.Context, arg OrdersNeedingAttentionParams) ([]OrdersNeedingAttentionRow, error) {
+	rows, err := q.db.Query(ctx, ordersNeedingAttention, arg.DeliveryDate, arg.StartTs, arg.EndTs)
 	if err != nil {
 		return nil, err
 	}
