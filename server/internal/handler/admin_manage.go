@@ -49,7 +49,6 @@ type productRequest struct {
 	Tags        []string          `json:"tags"`
 	IsFeatured  bool              `json:"is_featured"`
 	IsAvailable bool              `json:"is_available"`
-	SortOrder   int32             `json:"sort_order"`
 	Variants    []variantRequest  `json:"variants"`
 }
 
@@ -146,7 +145,6 @@ func (h *Handler) AdminCreateProduct(w http.ResponseWriter, r *http.Request) {
 			Tags:        nonNil(req.Tags),
 			IsFeatured:  req.IsFeatured,
 			IsAvailable: req.IsAvailable,
-			SortOrder:   req.SortOrder,
 		})
 		if err != nil {
 			return err
@@ -220,7 +218,6 @@ func (h *Handler) writeAdminProduct(w http.ResponseWriter, status int, r *http.R
 		"tags":         product.Tags,
 		"is_featured":  product.IsFeatured,
 		"is_available": product.IsAvailable,
-		"sort_order":   product.SortOrder,
 		"archived":     product.ArchivedAt.Valid,
 		"variants":     variantViews,
 	})
@@ -260,7 +257,6 @@ func (h *Handler) AdminUpdateProduct(w http.ResponseWriter, r *http.Request) {
 			Tags:        nonNil(req.Tags),
 			IsFeatured:  req.IsFeatured,
 			IsAvailable: req.IsAvailable,
-			SortOrder:   req.SortOrder,
 		}); err != nil {
 			return err
 		}
@@ -421,7 +417,6 @@ func (h *Handler) AdminListAllProducts(w http.ResponseWriter, r *http.Request) {
 			"image_url":       p.ImageUrl.String,
 			"is_featured":     p.IsFeatured,
 			"is_available":    p.IsAvailable,
-			"sort_order":      p.SortOrder,
 			"archived":        p.ArchivedAt.Valid,
 			"variant_count":   p.VariantCount,
 			"min_price_paise": p.MinPricePaise,

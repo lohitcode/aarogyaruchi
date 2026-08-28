@@ -52,10 +52,10 @@ func (q *Queries) AdminArchiveVariantsForProduct(ctx context.Context, productID 
 const adminCreateProduct = `-- name: AdminCreateProduct :one
 INSERT INTO products (
     slug, name, description, category, image_url,
-    ingredients, nutrition, tags, is_featured, is_available, sort_order
+    ingredients, nutrition, tags, is_featured, is_available
 ) VALUES (
     $1, $2, $3, $4, $5,
-    $6, $7, $8, $9, $10, $11
+    $6, $7, $8, $9, $10
 )
 RETURNING id, slug, name, description, category, image_url, ingredients, nutrition, tags, is_featured, is_available, sort_order, archived_at, created_at, updated_at
 `
@@ -71,7 +71,6 @@ type AdminCreateProductParams struct {
 	Tags        []string
 	IsFeatured  bool
 	IsAvailable bool
-	SortOrder   int32
 }
 
 func (q *Queries) AdminCreateProduct(ctx context.Context, arg AdminCreateProductParams) (Product, error) {
@@ -86,7 +85,6 @@ func (q *Queries) AdminCreateProduct(ctx context.Context, arg AdminCreateProduct
 		arg.Tags,
 		arg.IsFeatured,
 		arg.IsAvailable,
-		arg.SortOrder,
 	)
 	var i Product
 	err := row.Scan(
@@ -207,7 +205,13 @@ SELECT p.id, p.slug, p.name, p.description, p.category, p.image_url, p.ingredien
        (SELECT COALESCE(MIN(v.price_paise), 0) FROM product_variants v WHERE v.product_id = p.id AND v.archived_at IS NULL AND v.is_available = TRUE)::BIGINT AS min_price_paise,
        (SELECT COUNT(*) FROM order_items oi JOIN product_variants v ON v.id = oi.variant_id WHERE v.product_id = p.id)::BIGINT AS order_count
 FROM products p
-ORDER BY p.archived_at NULLS FIRST, p.sort_order, p.name
+ORDER BY p.archived_at NULLS FIRST, (
+    SELECT COALESCE(SUM(CASE WHEN o.status IS DISTINCT FROM 'cancelled' THEN oi.quantity END), 0)
+    FROM product_variants v
+    JOIN order_items oi ON oi.variant_id = v.id
+    JOIN orders o ON o.id = oi.order_id
+    WHERE v.product_id = p.id
+) DESC, p.name
 `
 
 type AdminListProductsRow struct {
@@ -320,7 +324,6 @@ UPDATE products SET
     tags = $9,
     is_featured = $10,
     is_available = $11,
-    sort_order = $12,
     updated_at = NOW()
 WHERE id = $1
 RETURNING id, slug, name, description, category, image_url, ingredients, nutrition, tags, is_featured, is_available, sort_order, archived_at, created_at, updated_at
@@ -338,7 +341,6 @@ type AdminUpdateProductParams struct {
 	Tags        []string
 	IsFeatured  bool
 	IsAvailable bool
-	SortOrder   int32
 }
 
 func (q *Queries) AdminUpdateProduct(ctx context.Context, arg AdminUpdateProductParams) (Product, error) {
@@ -354,7 +356,6 @@ func (q *Queries) AdminUpdateProduct(ctx context.Context, arg AdminUpdateProduct
 		arg.Tags,
 		arg.IsFeatured,
 		arg.IsAvailable,
-		arg.SortOrder,
 	)
 	var i Product
 	err := row.Scan(
@@ -565,12 +566,23 @@ func (q *Queries) GetVariantsForUpdate(ctx context.Context, dollar_1 []int64) ([
 
 const listCatalogProducts = `-- name: ListCatalogProducts :many
 
-SELECT id, slug, name, description, category, image_url, ingredients, nutrition, tags, is_featured, is_available, sort_order, archived_at, created_at, updated_at FROM products
-WHERE is_available = TRUE AND archived_at IS NULL
-ORDER BY sort_order, name
+SELECT id, slug, name, description, category, image_url, ingredients, nutrition, tags, is_featured, is_available, sort_order, archived_at, created_at, updated_at FROM products p
+WHERE p.is_available = TRUE AND p.archived_at IS NULL
+ORDER BY (
+    SELECT COALESCE(SUM(CASE WHEN o.status IS DISTINCT FROM 'cancelled' THEN oi.quantity END), 0)
+    FROM product_variants v
+    JOIN order_items oi ON oi.variant_id = v.id
+    JOIN orders o ON o.id = oi.order_id
+    WHERE v.product_id = p.id
+) DESC, p.name
 `
 
 // ============ Public catalog (parent products + sellable variants) ============
+//
+// Popularity = units ever sold (cancelled orders excluded), computed as a
+// correlated subquery: SELECT * keeps its products-model shape for sqlc and
+// the handlers. Free at this catalog/order volume; revisit only if
+// order_items grows large (then materialize a counter).
 func (q *Queries) ListCatalogProducts(ctx context.Context) ([]Product, error) {
 	rows, err := q.db.Query(ctx, listCatalogProducts)
 	if err != nil {

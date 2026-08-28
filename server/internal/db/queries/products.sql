@@ -1,9 +1,20 @@
 -- ============ Public catalog (parent products + sellable variants) ============
+--
+-- Popularity = units ever sold (cancelled orders excluded), computed as a
+-- correlated subquery: SELECT * keeps its products-model shape for sqlc and
+-- the handlers. Free at this catalog/order volume; revisit only if
+-- order_items grows large (then materialize a counter).
 
 -- name: ListCatalogProducts :many
-SELECT * FROM products
-WHERE is_available = TRUE AND archived_at IS NULL
-ORDER BY sort_order, name;
+SELECT * FROM products p
+WHERE p.is_available = TRUE AND p.archived_at IS NULL
+ORDER BY (
+    SELECT COALESCE(SUM(CASE WHEN o.status IS DISTINCT FROM 'cancelled' THEN oi.quantity END), 0)
+    FROM product_variants v
+    JOIN order_items oi ON oi.variant_id = v.id
+    JOIN orders o ON o.id = oi.order_id
+    WHERE v.product_id = p.id
+) DESC, p.name;
 
 -- name: ListCatalogVariants :many
 SELECT * FROM product_variants
@@ -37,7 +48,13 @@ SELECT p.*,
        (SELECT COALESCE(MIN(v.price_paise), 0) FROM product_variants v WHERE v.product_id = p.id AND v.archived_at IS NULL AND v.is_available = TRUE)::BIGINT AS min_price_paise,
        (SELECT COUNT(*) FROM order_items oi JOIN product_variants v ON v.id = oi.variant_id WHERE v.product_id = p.id)::BIGINT AS order_count
 FROM products p
-ORDER BY p.archived_at NULLS FIRST, p.sort_order, p.name;
+ORDER BY p.archived_at NULLS FIRST, (
+    SELECT COALESCE(SUM(CASE WHEN o.status IS DISTINCT FROM 'cancelled' THEN oi.quantity END), 0)
+    FROM product_variants v
+    JOIN order_items oi ON oi.variant_id = v.id
+    JOIN orders o ON o.id = oi.order_id
+    WHERE v.product_id = p.id
+) DESC, p.name;
 
 -- name: AdminGetProduct :one
 SELECT * FROM products WHERE id = $1;
@@ -45,10 +62,10 @@ SELECT * FROM products WHERE id = $1;
 -- name: AdminCreateProduct :one
 INSERT INTO products (
     slug, name, description, category, image_url,
-    ingredients, nutrition, tags, is_featured, is_available, sort_order
+    ingredients, nutrition, tags, is_featured, is_available
 ) VALUES (
     $1, $2, $3, $4, $5,
-    $6, $7, $8, $9, $10, $11
+    $6, $7, $8, $9, $10
 )
 RETURNING *;
 
@@ -64,7 +81,6 @@ UPDATE products SET
     tags = $9,
     is_featured = $10,
     is_available = $11,
-    sort_order = $12,
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;

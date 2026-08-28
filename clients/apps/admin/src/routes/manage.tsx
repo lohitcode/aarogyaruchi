@@ -119,7 +119,6 @@ type EditableProduct = {
   fiber: string;
   is_featured: boolean;
   is_available: boolean;
-  sort_order: string;
   variants: AdminVariantRow[];
 };
 
@@ -131,7 +130,6 @@ export type AdminProductRow = {
   image_url?: string;
   is_featured: boolean;
   is_available: boolean;
-  sort_order: number;
   archived: boolean;
   variant_count: number;
   min_price_paise: number;
@@ -153,14 +151,13 @@ const emptyProduct: EditableProduct = {
   fiber: "",
   is_featured: false,
   is_available: true,
-  sort_order: "0",
   variants: [
     { size_label: "Regular", unit: "", price_rupees: "", is_available: true },
   ],
 };
 
 const PRODUCT_SORT_OPTIONS = [
-  { value: "default", label: "Admin order" },
+  { value: "default", label: "Popularity (default)" },
   { value: "price-asc", label: "Price: low to high" },
   { value: "price-desc", label: "Price: high to low" },
   { value: "orders-desc", label: "Most ordered" },
@@ -259,7 +256,6 @@ function ProductsTab({
         fiber: n.fiber ?? "",
         is_featured: p.is_featured as boolean,
         is_available: p.is_available as boolean,
-        sort_order: String(p.sort_order ?? 0),
         variants: variants.map((v) => ({
           id: v.id,
           slug: v.slug,
@@ -316,7 +312,6 @@ function ProductsTab({
         },
         is_featured: p.is_featured,
         is_available: p.is_available,
-        sort_order: Number(p.sort_order) || 0,
         variants: p.variants
           .filter((v) => v.size_label.trim() || v.price_rupees)
           .map((v) => ({
@@ -613,15 +608,6 @@ function ProductEditorForm({
             onChange={(next) => set({ category: next })}
           />
         </div>
-        <label className="text-sm">
-          <span className="mb-1 block text-neutral-600">Sort order</span>
-          <input
-            value={product.sort_order}
-            onChange={(e) => set({ sort_order: e.target.value })}
-            type="number"
-            className="w-full border border-neutral-300 px-3 py-2"
-          />
-        </label>
       </div>
 
       <label className="block text-sm">

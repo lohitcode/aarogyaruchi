@@ -10,7 +10,6 @@ const product = (overrides: Partial<AdminProductRow>): AdminProductRow => ({
   name: "Item",
   is_featured: false,
   is_available: true,
-  sort_order: 0,
   archived: false,
   variant_count: 1,
   min_price_paise: 5000,
