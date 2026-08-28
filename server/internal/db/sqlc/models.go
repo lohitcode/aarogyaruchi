@@ -213,7 +213,6 @@ type Product struct {
 	Tags        []string
 	IsFeatured  bool
 	IsAvailable bool
-	SortOrder   int32
 	ArchivedAt  pgtype.Timestamptz
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz

@@ -57,7 +57,7 @@ INSERT INTO products (
     $1, $2, $3, $4, $5,
     $6, $7, $8, $9, $10
 )
-RETURNING id, slug, name, description, category, image_url, ingredients, nutrition, tags, is_featured, is_available, sort_order, archived_at, created_at, updated_at
+RETURNING id, slug, name, description, category, image_url, ingredients, nutrition, tags, is_featured, is_available, archived_at, created_at, updated_at
 `
 
 type AdminCreateProductParams struct {
@@ -99,7 +99,6 @@ func (q *Queries) AdminCreateProduct(ctx context.Context, arg AdminCreateProduct
 		&i.Tags,
 		&i.IsFeatured,
 		&i.IsAvailable,
-		&i.SortOrder,
 		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -172,7 +171,7 @@ func (q *Queries) AdminDeleteVariantsForProduct(ctx context.Context, productID i
 }
 
 const adminGetProduct = `-- name: AdminGetProduct :one
-SELECT id, slug, name, description, category, image_url, ingredients, nutrition, tags, is_featured, is_available, sort_order, archived_at, created_at, updated_at FROM products WHERE id = $1
+SELECT id, slug, name, description, category, image_url, ingredients, nutrition, tags, is_featured, is_available, archived_at, created_at, updated_at FROM products WHERE id = $1
 `
 
 func (q *Queries) AdminGetProduct(ctx context.Context, id int64) (Product, error) {
@@ -190,7 +189,6 @@ func (q *Queries) AdminGetProduct(ctx context.Context, id int64) (Product, error
 		&i.Tags,
 		&i.IsFeatured,
 		&i.IsAvailable,
-		&i.SortOrder,
 		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -200,7 +198,7 @@ func (q *Queries) AdminGetProduct(ctx context.Context, id int64) (Product, error
 
 const adminListProducts = `-- name: AdminListProducts :many
 
-SELECT p.id, p.slug, p.name, p.description, p.category, p.image_url, p.ingredients, p.nutrition, p.tags, p.is_featured, p.is_available, p.sort_order, p.archived_at, p.created_at, p.updated_at,
+SELECT p.id, p.slug, p.name, p.description, p.category, p.image_url, p.ingredients, p.nutrition, p.tags, p.is_featured, p.is_available, p.archived_at, p.created_at, p.updated_at,
        (SELECT COUNT(*) FROM product_variants v WHERE v.product_id = p.id AND v.archived_at IS NULL)::BIGINT AS variant_count,
        (SELECT COALESCE(MIN(v.price_paise), 0) FROM product_variants v WHERE v.product_id = p.id AND v.archived_at IS NULL AND v.is_available = TRUE)::BIGINT AS min_price_paise,
        (SELECT COUNT(*) FROM order_items oi JOIN product_variants v ON v.id = oi.variant_id WHERE v.product_id = p.id)::BIGINT AS order_count
@@ -226,7 +224,6 @@ type AdminListProductsRow struct {
 	Tags          []string
 	IsFeatured    bool
 	IsAvailable   bool
-	SortOrder     int32
 	ArchivedAt    pgtype.Timestamptz
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
@@ -257,7 +254,6 @@ func (q *Queries) AdminListProducts(ctx context.Context) ([]AdminListProductsRow
 			&i.Tags,
 			&i.IsFeatured,
 			&i.IsAvailable,
-			&i.SortOrder,
 			&i.ArchivedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -326,7 +322,7 @@ UPDATE products SET
     is_available = $11,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, slug, name, description, category, image_url, ingredients, nutrition, tags, is_featured, is_available, sort_order, archived_at, created_at, updated_at
+RETURNING id, slug, name, description, category, image_url, ingredients, nutrition, tags, is_featured, is_available, archived_at, created_at, updated_at
 `
 
 type AdminUpdateProductParams struct {
@@ -370,7 +366,6 @@ func (q *Queries) AdminUpdateProduct(ctx context.Context, arg AdminUpdateProduct
 		&i.Tags,
 		&i.IsFeatured,
 		&i.IsAvailable,
-		&i.SortOrder,
 		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -444,7 +439,7 @@ func (q *Queries) CountOrderItemsForProduct(ctx context.Context, productID int64
 }
 
 const getProductBySlug = `-- name: GetProductBySlug :one
-SELECT id, slug, name, description, category, image_url, ingredients, nutrition, tags, is_featured, is_available, sort_order, archived_at, created_at, updated_at FROM products
+SELECT id, slug, name, description, category, image_url, ingredients, nutrition, tags, is_featured, is_available, archived_at, created_at, updated_at FROM products
 WHERE slug = $1 AND archived_at IS NULL
 `
 
@@ -463,7 +458,6 @@ func (q *Queries) GetProductBySlug(ctx context.Context, slug string) (Product, e
 		&i.Tags,
 		&i.IsFeatured,
 		&i.IsAvailable,
-		&i.SortOrder,
 		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -566,7 +560,7 @@ func (q *Queries) GetVariantsForUpdate(ctx context.Context, dollar_1 []int64) ([
 
 const listCatalogProducts = `-- name: ListCatalogProducts :many
 
-SELECT id, slug, name, description, category, image_url, ingredients, nutrition, tags, is_featured, is_available, sort_order, archived_at, created_at, updated_at FROM products p
+SELECT id, slug, name, description, category, image_url, ingredients, nutrition, tags, is_featured, is_available, archived_at, created_at, updated_at FROM products p
 WHERE p.is_available = TRUE AND p.archived_at IS NULL
 ORDER BY (
     SELECT COALESCE(SUM(CASE WHEN o.status IS DISTINCT FROM 'cancelled' THEN oi.quantity END), 0)
@@ -604,7 +598,6 @@ func (q *Queries) ListCatalogProducts(ctx context.Context) ([]Product, error) {
 			&i.Tags,
 			&i.IsFeatured,
 			&i.IsAvailable,
-			&i.SortOrder,
 			&i.ArchivedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
