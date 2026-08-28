@@ -170,6 +170,28 @@ export type HandoverRow = {
   confirmed_at?: string
 }
 
+export type AdminUserDetail = {
+  user_id: number
+  phone: string
+  name?: string
+  created_at: string
+  address?: {
+    label?: string
+    address_line: string
+    landmark?: string
+    locality_name?: string
+    locality_city?: string
+    latitude?: number
+    longitude?: number
+  } | null
+  address_count: number
+  notification?: {
+    permission: "granted" | "denied" | "default" | "unsupported"
+    reported_at: string
+    push_subscribed: boolean
+  } | null
+}
+
 export const adminApi = {
   dashboard: (deliveryDate?: string) =>
     api.get<AdminDashboardData>(`/v1/admin/dashboard${deliveryDate ? `?delivery_date=${deliveryDate}` : ""}`),
@@ -237,6 +259,8 @@ export const adminApi = {
 
   users: () =>
     api.get<{ users: Array<Record<string, unknown>> }>("/v1/admin/users"),
+  userDetail: (userId: number) =>
+    api.get<{ user: AdminUserDetail }>(`/v1/admin/users/${userId}`),
   chatThread: (userId: number) =>
     api.get<Record<string, unknown>>(`/v1/admin/chat/threads/${userId}`),
 }

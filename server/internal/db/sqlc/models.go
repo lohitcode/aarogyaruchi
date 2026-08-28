@@ -123,6 +123,15 @@ type LocationSample struct {
 	ReceivedAt pgtype.Timestamptz
 }
 
+type NotificationState struct {
+	ID         int64
+	Role       string
+	UserID     pgtype.Int8
+	AdminID    pgtype.Int8
+	Permission string
+	ReportedAt pgtype.Timestamptz
+}
+
 type OperatingSetting struct {
 	ID                  int32
 	CutoffMinutes       int32

@@ -59,6 +59,7 @@ func New(h *handler.Handler, auth *middleware.AuthMiddleware, allowedOrigins []s
 			r.Use(auth.RequireUserOrAdmin)
 			r.Post("/push/subscribe", h.PushSubscribe)
 			r.Post("/push/unsubscribe", h.PushUnsubscribe)
+			r.Post("/push/permission", h.PushReportPermission)
 		})
 		r.Get("/push/public-key", h.PushPublicKey)
 
@@ -124,6 +125,7 @@ func New(h *handler.Handler, auth *middleware.AuthMiddleware, allowedOrigins []s
 
 				// Users + support chat
 				r.Get("/users", h.AdminListUsers)
+				r.Get("/users/{user_id}", h.AdminGetUser)
 				r.Get("/chat/threads", h.AdminListChatThreads)
 				r.Get("/chat/threads/{user_id}", h.AdminGetChatThread)
 				r.Post("/chat/threads/{user_id}/messages", h.AdminSendChatMessage)

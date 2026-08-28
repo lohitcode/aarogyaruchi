@@ -384,6 +384,17 @@ export const en = {
     ownedBy: (operator: string) => `Owned and operated by ${operator}`,
     shopTitle: "Shop",
     shop: {
+  notifications: {
+    title: "Turn on notifications",
+    body: "Get order updates and support replies on this device.",
+    enable: "Enable notifications",
+    enabling: "Enabling…",
+    dismiss: "Dismiss notification nudge",
+    blockedTitle: "Notifications are blocked",
+    blockedBody:
+      "Allow notifications for this site in your browser settings to get order updates and support replies.",
+  },
+
       all: "All Products",
       meals: "Meals",
       snacks: "Snacks",

@@ -26,6 +26,7 @@ import {
 import appCss from "../styles.css?url";
 import { fetchAdminSession, type AdminSession } from "../lib/admin";
 import { ServiceWorkerRegister } from "../components/service-worker-register";
+import { NotificationBanner } from "../components/notification-banner";
 
 /**
  * Root of the standalone ops app (admin.aarogyaruchi.com). Same shell the
@@ -238,6 +239,11 @@ function AdminShell() {
             </aside>
           </div>
         )}
+
+        {/* Nudge to allow notifications (chat + new-order alerts);
+            re-checked on every app open, above the page content so it shows
+            on desktop and mobile alike. */}
+        <NotificationBanner />
 
         <main className="flex min-w-0 flex-1 flex-col p-4 sm:p-6 lg:p-8">
           <Outlet />

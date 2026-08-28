@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { ArrowLeft, Phone, Send } from "lucide-react"
+import { ArrowLeft, ChevronDown, Phone, Send } from "lucide-react"
 import { api } from "../lib/api"
 import { adminApi } from "../lib/admin"
 import { connectWs } from "../lib/ws"
+import { CustomerDetailsDialog } from "../components/admin/customer-details-dialog"
 
 export const Route = createFileRoute("/users/$id")({
   component: AdminUserChat,
@@ -32,6 +33,7 @@ function AdminUserChat() {
   const [draft, setDraft] = useState("")
   const [sending, setSending] = useState(false)
   const [error, setError] = useState("")
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const { data, isLoading, error: loadError, refetch: retry } = useQuery({
@@ -102,11 +104,30 @@ function AdminUserChat() {
           <ArrowLeft className="h-4 w-4" />
           All customers
         </Link>
-        <div className="text-right">
-          <p className="font-mono text-sm font-semibold text-neutral-900">{thread.user_phone}</p>
-          <p className="text-xs text-neutral-500">{thread.user_name || "Customer"}</p>
-        </div>
+        <button
+          type="button"
+          onClick={() => setDetailsOpen(true)}
+          className="flex items-center gap-2.5 border border-neutral-200 bg-white px-3 py-2 text-left hover:bg-neutral-50"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-sm font-semibold text-white">
+            {(thread.user_name || thread.user_phone).charAt(0).toUpperCase()}
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-semibold text-neutral-900">
+              {thread.user_name || "Customer"}
+            </span>
+            <span className="block font-mono text-xs text-neutral-500">
+              {thread.user_phone}
+            </span>
+          </span>
+          <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400" />
+        </button>
       </div>
+      <CustomerDetailsDialog
+        userId={userID}
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+      />
 
       <div className="mt-4 flex min-h-96 flex-1 flex-col overflow-y-auto border border-neutral-200 bg-white p-4">
         {thread.messages.length === 0 ? (

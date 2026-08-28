@@ -82,6 +82,16 @@ export async function subscribeQuietly(): Promise<boolean> {
   }
 }
 
+/**
+ * Report the current browser permission to the API (fire-and-forget). Called
+ * on every app open and after any permission change; failures are ignored —
+ * reporting is best-effort, never blocking.
+ */
+export function reportPushState(): void {
+  const permission = currentPermission()
+  api.post("/v1/push/permission", { permission }).catch(() => undefined)
+}
+
 export async function disablePush(): Promise<void> {
   if (!pushSupported()) return
   try {

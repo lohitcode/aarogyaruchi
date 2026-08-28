@@ -5,6 +5,7 @@ import { Bell, MessageCircle } from "lucide-react"
 import { adminApi } from "../lib/admin"
 import { connectWs } from "../lib/ws"
 import { currentPermission, enablePush, pushSupported, subscribeQuietly } from "../lib/push"
+import { CustomerDetailsDialog } from "../components/admin/customer-details-dialog"
 
 export const Route = createFileRoute("/users/")({
   component: AdminUsers,
@@ -27,6 +28,7 @@ const timeOf = (v?: string) => (v ? Date.parse(v) || 0 : 0)
 function AdminUsers() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
+  const [detailsUserId, setDetailsUserId] = useState<number | null>(null)
   const [pushState, setPushState] = useState<"subscribing" | "granted" | "denied" | "default" | "unsupported">(
     currentPermission() === "granted" ? "subscribing" : currentPermission(),
   )
@@ -116,7 +118,15 @@ function AdminUsers() {
                 {users.map((u) => (
                   <tr key={u.user_id} className="border-b border-neutral-100 text-neutral-800 last:border-0 hover:bg-neutral-50">
                     <td className="px-4 py-2.5 font-mono text-xs">{u.phone}</td>
-                    <td className="px-4 py-2.5">{u.name || "—"}</td>
+                    <td className="px-4 py-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setDetailsUserId(u.user_id)}
+                        className="text-left hover:underline"
+                      >
+                        {u.name || "—"}
+                      </button>
+                    </td>
                     <td className="px-4 py-2.5 text-right">{u.order_count}</td>
                     <td className="max-w-xs px-4 py-2.5">
                       {u.thread_id ? (
@@ -149,6 +159,16 @@ function AdminUsers() {
           </div>
         )}
       </div>
+
+      {detailsUserId !== null && (
+        <CustomerDetailsDialog
+          userId={detailsUserId}
+          open
+          onOpenChange={(next) => {
+            if (!next) setDetailsUserId(null)
+          }}
+        />
+      )}
     </div>
   )
 }

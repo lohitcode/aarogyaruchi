@@ -15,6 +15,7 @@ import { CartProvider } from "../lib/cart";
 import { ProfileGate } from "../components/auth/profile-gate";
 import { I18nProvider } from "../i18n";
 import { Navbar } from "../components/layout/navbar";
+import { NotificationBanner } from "../components/layout/notification-banner";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -237,6 +238,9 @@ function RootComponent() {
                 {/* Site header on every route — sticky, above the ProfileGate
                     overlay (z-40) so menus stay usable while gated. */}
                 <Navbar />
+                {/* Nudge to allow notifications; re-checked on every app
+                    open while the customer is logged in. */}
+                <NotificationBanner />
                 <Outlet />
                 {/* Blocks interaction until name + address exist; the navbar
                     (z-50) stays above the overlay (z-40) so menus remain usable. */}

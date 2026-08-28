@@ -378,6 +378,17 @@ export const hi: Messages = {
     ownedBy: (operator: string) => `${operator} के स्वामित्व और संचालन में`,
     shopTitle: "शॉप",
     shop: {
+  notifications: {
+    title: "सूचनाएँ चालू करें",
+    body: "इस डिवाइस पर ऑर्डर अपडेट और सहायता जवाब पाएं।",
+    enable: "सूचनाएँ चालू करें",
+    enabling: "चालू हो रहा है…",
+    dismiss: "सूचना कार्ड हटाएँ",
+    blockedTitle: "सूचनाएँ ब्लॉक हैं",
+    blockedBody:
+      "ऑर्डर अपडेट और सहायता जवाब पाने के लिए अपने ब्राउज़र सेटिंग्स में इस साइट के लिए सूचनाओं की अनुमति दें।",
+  },
+
       all: "सभी उत्पाद",
       meals: "भोजन",
       snacks: "स्नैक्स",

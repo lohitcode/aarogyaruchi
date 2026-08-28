@@ -103,6 +103,41 @@ func (q *Queries) ListPushSubscriptionsForUser(ctx context.Context, userID pgtyp
 	return items, nil
 }
 
+const upsertNotificationState = `-- name: UpsertNotificationState :one
+INSERT INTO notification_states (role, user_id, admin_id, permission)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (user_id, admin_id) DO UPDATE SET
+    permission = EXCLUDED.permission,
+    reported_at = NOW()
+RETURNING id, role, user_id, admin_id, permission, reported_at
+`
+
+type UpsertNotificationStateParams struct {
+	Role       string
+	UserID     pgtype.Int8
+	AdminID    pgtype.Int8
+	Permission string
+}
+
+func (q *Queries) UpsertNotificationState(ctx context.Context, arg UpsertNotificationStateParams) (NotificationState, error) {
+	row := q.db.QueryRow(ctx, upsertNotificationState,
+		arg.Role,
+		arg.UserID,
+		arg.AdminID,
+		arg.Permission,
+	)
+	var i NotificationState
+	err := row.Scan(
+		&i.ID,
+		&i.Role,
+		&i.UserID,
+		&i.AdminID,
+		&i.Permission,
+		&i.ReportedAt,
+	)
+	return i, err
+}
+
 const upsertPushSubscription = `-- name: UpsertPushSubscription :one
 INSERT INTO push_subscriptions (role, user_id, admin_id, endpoint, p256dh, auth, user_agent)
 VALUES ($1, $2, $3, $4, $5, $6, $7)

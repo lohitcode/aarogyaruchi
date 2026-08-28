@@ -73,6 +73,53 @@ func (h *Handler) PushUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	h.JSON(w, http.StatusOK, map[string]string{"message": "unsubscribed"})
 }
 
+type pushPermissionRequest struct {
+	Permission string `json:"permission"`
+}
+
+var validPushPermissions = map[string]bool{
+	"granted":     true,
+	"denied":      true,
+	"default":     true,
+	"unsupported": true,
+}
+
+// PushReportPermission records the caller's last-known browser notification
+// permission. Clients report on every app open (and after any change), which
+// is what the ops console shows in the customer details dialog. The role
+// comes from the session, never the request body.
+func (h *Handler) PushReportPermission(w http.ResponseWriter, r *http.Request) {
+	var req pushPermissionRequest
+	if err := decodeJSON(r, &req); err != nil || !validPushPermissions[req.Permission] {
+		h.Error(w, http.StatusBadRequest, "permission must be granted, denied, default, or unsupported")
+		return
+	}
+
+	userID, isUser := middleware.GetUserID(r.Context())
+	adminID, isAdmin := middleware.GetAdminID(r.Context())
+	if !isUser && !isAdmin {
+		h.Error(w, http.StatusForbidden, "unsupported role")
+		return
+	}
+
+	var params sqlc.UpsertNotificationStateParams
+	params.Permission = req.Permission
+	if isUser {
+		params.Role = "user"
+		params.UserID = pgInt8(userID)
+	} else {
+		params.Role = "admin"
+		params.AdminID = pgInt8(adminID)
+	}
+
+	state, err := h.queries.UpsertNotificationState(r.Context(), params)
+	if err != nil {
+		h.Error(w, http.StatusInternalServerError, "failed to save permission state")
+		return
+	}
+	h.JSON(w, http.StatusOK, map[string]any{"permission": state.Permission, "reported_at": state.ReportedAt.Time})
+}
+
 // notifyUser delivers a push to every device of one customer. Only
 // subscriptions the push service confirms gone (404/410) are pruned;
 // transient failures keep the row for the next event.

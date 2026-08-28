@@ -21,3 +21,11 @@ SELECT * FROM push_subscriptions WHERE role = 'user' AND user_id = $1;
 
 -- name: ListPushSubscriptionsForAdmins :many
 SELECT * FROM push_subscriptions WHERE role = 'admin';
+
+-- name: UpsertNotificationState :one
+INSERT INTO notification_states (role, user_id, admin_id, permission)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (user_id, admin_id) DO UPDATE SET
+    permission = EXCLUDED.permission,
+    reported_at = NOW()
+RETURNING *;
