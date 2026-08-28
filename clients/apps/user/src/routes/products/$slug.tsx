@@ -5,6 +5,7 @@ import { ProductDetailsTabs } from "../../components/product-detail/product-deta
 import { SimilarProducts } from "../../components/product-detail/similar-products"
 import type { Product } from "../../lib/api"
 import { fetchCatalog, useCatalogRecovery } from "../../lib/catalog"
+import { ogMetaForProduct } from "../../lib/og"
 import { useMessages } from "../../i18n"
 
 export const Route = createFileRoute("/products/$slug")({
@@ -14,18 +15,25 @@ export const Route = createFileRoute("/products/$slug")({
     // to SSR. Only a RESOLVED catalog may answer not-found — an unreachable
     // API (worker same-zone redirect loop) recovers in the browser instead
     // of 404ing every direct load.
-    let products: Product[]
+    let products: Product[] | null = null
     try {
       products = await fetchCatalog()
     } catch {
-      return { product: null, products: [] as Product[], catalogFailed: true }
+      // SSR fetch unreachable — browser retry recovers via useCatalogRecovery.
     }
-    const product = products.find((p) => p.slug === params.slug)
-    if (!product) throw notFound()
-    return { product, products, catalogFailed: false }
+    const product = products?.find((p) => p.slug === params.slug) ?? null
+    if (products && !product) throw notFound()
+    return { product, products: products ?? [], catalogFailed: products === null }
   },
   component: ProductDetailPage,
   notFoundComponent: () => <ProductNotFound />,
+  // Per-product link previews resolve from the build-time snapshot — no
+  // request-time fetch (see lib/og.ts), so previews render even while the
+  // page itself is recovering its live data in the browser.
+  // NOTE: keep head AFTER loader — declared earlier it trips circular type
+  // inference and collapses the loader's return type to `never`
+  // (TanStack/router#4740).
+  head: ({ params }) => ({ meta: ogMetaForProduct(params.slug) }),
 })
 
 function ProductNotFound() {

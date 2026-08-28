@@ -1,8 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Minus, Plus, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@aarogyaruchi/ui/components/button";
 import { useCart } from "../lib/cart";
 import { useAuth } from "../lib/auth";
+import { fetchCatalog } from "../lib/catalog";
 import { formatPaise } from "../lib/api";
 import { useMessages, usePageMetadata } from "../i18n";
 
@@ -29,6 +31,32 @@ function CartPage() {
     description: t.shop.cartDescription,
   });
 
+  // Product photos for cart rows (square, same treatment as the product
+  // cards). Lines only carry variant ids, so resolve them through the cached
+  // catalog; rows render a letter tile until it lands (or if it fails).
+  const [imageByVariant, setImageByVariant] = useState<Record<number, string>>(
+    {},
+  );
+  useEffect(() => {
+    let cancelled = false;
+    fetchCatalog()
+      .then((products) => {
+        if (cancelled) return;
+        const map: Record<number, string> = {};
+        for (const product of products) {
+          if (!product.image_url) continue;
+          for (const variant of product.variants) {
+            map[variant.id] = product.image_url;
+          }
+        }
+        setImageByVariant(map);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   if (count === 0) {
     return (
       <main className="mx-auto w-full max-w-3xl px-6 py-20 text-center md:px-10">
@@ -51,6 +79,20 @@ function CartPage() {
       <ul className="mt-8 divide-y divide-black/10 border-y border-black/10">
         {lines.map((line) => (
           <li key={line.variant_id} className="flex items-center gap-4 py-5">
+            <div className="h-20 w-20 shrink-0 overflow-hidden border border-black/10 bg-secondary">
+              {imageByVariant[line.variant_id] ? (
+                <img
+                  src={imageByVariant[line.variant_id]}
+                  alt={line.name}
+                  loading="lazy"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-primary/5 text-2xl text-primary">
+                  {line.name.charAt(0)}
+                </div>
+              )}
+            </div>
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium text-foreground">
                 {line.name}

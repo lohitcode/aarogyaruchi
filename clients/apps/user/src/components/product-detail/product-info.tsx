@@ -61,21 +61,21 @@ export function ProductInfo({ product }: ProductInfoProps) {
 
   return (
     <div className="grid gap-10 md:grid-cols-2 md:gap-16">
-      {/* Image */}
+      {/* Image — fills the frame (square, object-cover) like the product cards */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="flex min-h-[320px] items-center justify-center overflow-hidden border border-black/10 bg-secondary p-6 md:min-h-[440px]"
+        className="relative aspect-square w-full overflow-hidden border border-black/10 bg-secondary"
       >
         {product.image_url ? (
           <img
             src={product.image_url}
             alt={text.name}
-            className="max-h-[300px] max-w-full object-contain md:max-h-[380px]"
+            className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-48 w-48 items-center justify-center bg-primary/5 text-7xl text-primary md:h-64 md:w-64">
+          <div className="flex h-full w-full items-center justify-center bg-primary/5 text-7xl text-primary md:text-8xl">
             {text.name.charAt(0)}
           </div>
         )}
