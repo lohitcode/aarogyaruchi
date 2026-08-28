@@ -86,7 +86,7 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const origins = (env.UPLOAD_ALLOWED_ORIGINS ??
-      "https://aarogyaruchi.com,https://www.aarogyaruchi.com,http://localhost:3000")
+      "https://aarogyaruchi.com,https://www.aarogyaruchi.com,https://admin.aarogyaruchi.com,https://dev-admin.aarogyaruchi.com,http://localhost:3000,http://localhost:3001")
       .split(",")
       .map((o) => o.trim())
       .filter(Boolean);

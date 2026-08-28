@@ -3,5 +3,10 @@
   "main": "src/index.ts",
   "compatibility_date": "2024-01-01",
   "account_id": "0457dd971eb68eea2c72d1c2599881d2",
-  "r2_buckets": [{ "binding": "R2_BUCKET", "bucket_name": "aarogyaruchi-products" }]
+  "r2_buckets": [{ "binding": "R2_BUCKET", "bucket_name": "aarogyaruchi-products" }],
+  // Browser origins allowed to PUT /upload (admin panel image uploads).
+  // Keep in sync with the code default in src/index.ts.
+  "vars": {
+    "UPLOAD_ALLOWED_ORIGINS": "https://aarogyaruchi.com,https://www.aarogyaruchi.com,https://admin.aarogyaruchi.com,https://dev-admin.aarogyaruchi.com,http://localhost:3000,http://localhost:3001"
+  }
 }
