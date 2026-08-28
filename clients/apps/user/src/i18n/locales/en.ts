@@ -378,12 +378,6 @@ export const en = {
     replyTime: "We usually reply within a few minutes during delivery hours",
   },
 
-  footer: {
-    tagline:
-      "Healthy, delicious meals crafted with love and the finest natural ingredients.",
-    ownedBy: (operator: string) => `Owned and operated by ${operator}`,
-    shopTitle: "Shop",
-    shop: {
   notifications: {
     title: "Turn on notifications",
     body: "Get order updates and support replies on this device.",
@@ -394,6 +388,13 @@ export const en = {
     blockedBody:
       "Allow notifications for this site in your browser settings to get order updates and support replies.",
   },
+
+  footer: {
+    tagline:
+      "Healthy, delicious meals crafted with love and the finest natural ingredients.",
+    ownedBy: (operator: string) => `Owned and operated by ${operator}`,
+    shopTitle: "Shop",
+    shop: {
 
       all: "All Products",
       meals: "Meals",
