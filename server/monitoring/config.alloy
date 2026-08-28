@@ -51,9 +51,30 @@ discovery.docker "containers" {
 	refresh_interval = "15s"
 }
 
+// Promote docker metadata onto every log line: container = container name,
+// service_name = compose service (Grafana Logs Drilldown expects it).
+discovery.relabel "containers" {
+	targets = discovery.docker.containers.targets
+
+	rule {
+		source_labels = ["__meta_docker_container_name"]
+		regex         = "/(.*)"
+		target_label  = "container"
+	}
+	rule {
+		source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+		target_label  = "service_name"
+	}
+	rule {
+		source_labels = ["__meta_docker_container_name"]
+		regex         = "/(.*)"
+		target_label  = "job"
+	}
+}
+
 loki.source.docker "containers" {
 	host       = "unix:///var/run/docker.sock"
-	targets    = discovery.docker.containers.targets
+	targets    = discovery.relabel.containers.output
 	forward_to = [loki.write.grafana_cloud.receiver]
 }
 
