@@ -7,6 +7,13 @@
 # unhealthy). The config is static across deploys — cutovers happen purely
 # by container health, no reloads needed.
 api.aarogyaruchi.com {
+	# Prometheus surface stays network-internal: only Alloy (compose
+	# network) scrapes the slots' /metrics. The API route is fail-closed
+	# too (METRICS_ENABLED), this handle keeps it off the internet even
+	# once enabled.
+	handle /metrics {
+		respond 404
+	}
 	reverse_proxy server-blue:8080 server-green:8080 {
 		health_uri /health
 		health_interval 2s
