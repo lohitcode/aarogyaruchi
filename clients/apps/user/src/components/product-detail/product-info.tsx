@@ -1,33 +1,36 @@
-import { useState } from "react";
-import { motion } from "motion/react";
-import { ArrowRight } from "lucide-react";
 import { Button } from "@aarogyaruchi/ui/components/button";
+import { ArrowRight } from "lucide-react";
+import { motion } from "motion/react";
+import { useState } from "react";
+import { useMessages } from "../../i18n";
 import type { Product } from "../../lib/api";
 import { formatPaise } from "../../lib/api";
-import { useMessages } from "../../i18n";
-import { productText } from "../../lib/product-text";
-import { SizeSelector } from "./size-selector";
-import { QuantityStepper } from "./quantity-stepper";
 import { useAuth } from "../../lib/auth";
 import { useCart } from "../../lib/cart";
+import { productText } from "../../lib/product-text";
+import { QuantityStepper } from "../products/quantity-stepper";
+import { VariantQtySheet } from "../products/variant-qty-sheet";
 
 type ProductInfoProps = {
   product: Product;
 };
 
 export function ProductInfo({ product }: ProductInfoProps) {
-  const [selectedVariant, setSelectedVariant] = useState(
-    product.variants[0] ? String(product.variants[0].id) : ""
-  );
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const { requireAuth } = useAuth();
   const { add } = useCart();
   const t = useMessages();
   const text = productText(t, product);
 
-  const variant = product.variants.find(
-    (v) => String(v.id) === selectedVariant
+  // Multi-variant products skip the inline selector/stepper entirely — the
+  // variant sheet (two-column sizes + prices) is the only add/edit surface.
+  const isMulti = product.variants.length > 1;
+  const variant = product.variants[0];
+  const minPrice = product.variants.reduce(
+    (min, v) => Math.min(min, v.price_paise),
+    variant?.price_paise ?? 0
   );
 
   const addToCart = () => {
@@ -45,6 +48,15 @@ export function ProductInfo({ product }: ProductInfoProps) {
     );
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1500);
+  };
+
+  const handleAddToCart = () => {
+    if (isMulti) {
+      requireAuth(() => setSheetOpen(true));
+      return;
+    }
+    if (!variant) return;
+    requireAuth(addToCart);
   };
 
   return (
@@ -74,7 +86,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
-        className="flex flex-col justify-center"
+        className="relative flex flex-col justify-center"
       >
         <div className="flex flex-wrap gap-1.5">
           {text.tags.map((tag) => (
@@ -93,36 +105,24 @@ export function ProductInfo({ product }: ProductInfoProps) {
           {text.description}
         </p>
 
-        {variant && (
-          <p className="mt-6 text-3xl font-medium text-foreground md:text-4xl">
-            {formatPaise(variant.price_paise)}
-          </p>
-        )}
+        <p className="mt-6 text-3xl font-medium text-foreground md:text-4xl">
+          {isMulti
+            ? `${t.shop.from} ${formatPaise(minPrice)}`
+            : formatPaise(minPrice)}
+        </p>
 
-        {/* Size selector (live variants) */}
-        {product.variants.length > 0 && (
-          <div className="mt-8">
-            <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-              {t.productDetail.size}
-            </p>
-            <SizeSelector
-              variants={product.variants}
-              value={selectedVariant}
-              onChange={setSelectedVariant}
-            />
-          </div>
-        )}
-
-        {/* Quantity + Add to cart */}
+        {/* Quantity + Add to cart (single-variant only) */}
         <div className="mt-8 flex flex-wrap items-center gap-4">
-          <QuantityStepper
-            value={quantity}
-            onChange={setQuantity}
-            increaseLabel={t.productDetail.increaseQuantity}
-            decreaseLabel={t.productDetail.decreaseQuantity}
-          />
+          {!isMulti && (
+            <QuantityStepper
+              value={quantity}
+              onChange={setQuantity}
+              increaseLabel={t.productDetail.increaseQuantity}
+              decreaseLabel={t.productDetail.decreaseQuantity}
+            />
+          )}
           <Button
-            onClick={() => requireAuth(addToCart)}
+            onClick={handleAddToCart}
             disabled={!variant}
             className="flex-1 rounded-sm bg-primary px-8 py-5 text-base font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-40 sm:flex-none"
           >
@@ -131,6 +131,12 @@ export function ProductInfo({ product }: ProductInfoProps) {
           </Button>
         </div>
       </motion.div>
+
+      <VariantQtySheet
+        product={product}
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+      />
     </div>
   );
 }

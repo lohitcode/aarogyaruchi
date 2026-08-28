@@ -1,14 +1,18 @@
-import { Link } from "@tanstack/react-router";
-import { motion } from "motion/react";
-import { Check, Plus } from "lucide-react";
-import { useState } from "react";
 import { Button } from "@aarogyaruchi/ui/components/button";
+import { Link } from "@tanstack/react-router";
+import { Check, Plus } from "lucide-react";
+import { motion } from "motion/react";
+import { useState } from "react";
+import { useMessages } from "../../i18n";
 import type { Product } from "../../lib/api";
 import { formatPaise } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
-import { useCart } from "../../lib/cart";
-import { useMessages } from "../../i18n";
+import { useCart, useProductCart } from "../../lib/cart";
 import { productText } from "../../lib/product-text";
+import { QuantityStepper } from "./quantity-stepper";
+import { VariantQtySheet } from "./variant-qty-sheet";
+
+const MAX_PER_VARIANT = 50;
 
 type ProductCardProps = {
   product: Product;
@@ -17,32 +21,72 @@ type ProductCardProps = {
 
 export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const { requireAuth } = useAuth();
-  const { add } = useCart();
+  const { add, setQuantity } = useCart();
+  const { qtyByVariantId, totalQty } = useProductCart(product);
   const [added, setAdded] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const t = useMessages();
   const text = productText(t, product);
 
   const firstVariant = product.variants[0];
+  const isMulti = product.variants.length > 1;
   const minPrice = product.variants.reduce(
     (min, v) => Math.min(min, v.price_paise),
     firstVariant?.price_paise ?? 0
   );
 
+  const quickAddFirst = () => {
+    if (!firstVariant) return;
+    add({
+      variant_id: firstVariant.id,
+      slug: product.slug,
+      name: product.name,
+      size_label: firstVariant.size_label,
+      unit: firstVariant.unit,
+      price_paise: firstVariant.price_paise,
+    });
+    setAdded(true);
+    window.setTimeout(() => setAdded(false), 1500);
+  };
+
   const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!firstVariant) return;
     requireAuth(() => {
-      add({
-        variant_id: firstVariant.id,
-        slug: product.slug,
-        name: product.name,
-        size_label: firstVariant.size_label,
-        unit: firstVariant.unit,
-        price_paise: firstVariant.price_paise,
-      });
-      setAdded(true);
-      window.setTimeout(() => setAdded(false), 1500);
+      if (isMulti) {
+        setSheetOpen(true);
+        return;
+      }
+      quickAddFirst();
     });
+  };
+
+  // In-cart stepper: single-variant products edit their one line directly;
+  // multi-variant products open the sheet (the requested total is ignored).
+  const handleStep = (next: number) => {
+    if (isMulti || !firstVariant) {
+      setSheetOpen(true);
+      return;
+    }
+    if (next <= 0) {
+      setQuantity(firstVariant.id, 0);
+      return;
+    }
+    if (qtyByVariantId.has(firstVariant.id)) {
+      setQuantity(firstVariant.id, next);
+    } else {
+      add(
+        {
+          variant_id: firstVariant.id,
+          slug: product.slug,
+          name: product.name,
+          size_label: firstVariant.size_label,
+          unit: firstVariant.unit,
+          price_paise: firstVariant.price_paise,
+        },
+        next
+      );
+    }
   };
 
   return (
@@ -106,27 +150,44 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
                 ? `${t.shop.from} ${formatPaise(minPrice)}`
                 : formatPaise(minPrice)}
             </span>
-            <Button
-              size="sm"
-              className="rounded-sm bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              onClick={handleAdd}
-              disabled={!firstVariant}
-            >
-              {added ? (
-                <>
-                  <Check className="mr-1 h-4 w-4" />
-                  {t.productDetail.added}
-                </>
-              ) : (
-                <>
-                  <Plus className="mr-1 h-4 w-4" />
-                  {t.productDetail.add}
-                </>
-              )}
-            </Button>
+            {totalQty > 0 ? (
+              <QuantityStepper
+                value={totalQty}
+                onChange={handleStep}
+                min={0}
+                max={MAX_PER_VARIANT}
+                size="compact"
+                increaseLabel={t.productDetail.increaseQuantity}
+                decreaseLabel={t.productDetail.decreaseQuantity}
+              />
+            ) : (
+              <Button
+                size="sm"
+                className="rounded-sm bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                onClick={handleAdd}
+                disabled={!firstVariant}
+              >
+                {added ? (
+                  <>
+                    <Check className="mr-1 h-4 w-4" />
+                    {t.productDetail.added}
+                  </>
+                ) : (
+                  <>
+                    <Plus className="mr-1 h-4 w-4" />
+                    {t.productDetail.add}
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </Link>
+      <VariantQtySheet
+        product={product}
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+      />
     </motion.div>
   );
 }

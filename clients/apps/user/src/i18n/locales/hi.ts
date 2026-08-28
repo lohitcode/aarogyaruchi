@@ -202,6 +202,12 @@ export const hi: Messages = {
     similarHeading: "इसी श्रेणी से और।",
     notFoundTitle: "उत्पाद नहीं मिला",
     notFoundBody: "जो उत्पाद आप ढूँढ रहे हैं वह मौजूद नहीं है।",
+    variantSheet: {
+      description: "अपनी पसंद के साइज़ और मात्रा चुनें",
+      item: "आइटम",
+      items: "आइटम",
+      done: "हो गया",
+    },
   },
 
   auth: {

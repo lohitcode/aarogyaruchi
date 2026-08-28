@@ -1,12 +1,13 @@
 import {
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
-  type ReactNode,
 } from "react"
+import type { Product } from "./api"
 
 /**
  * Client-side cart. Lines reference live API product ids so checkout quotes
@@ -28,8 +29,8 @@ type CartContextValue = {
   count: number
   totalPaise: number
   add: (line: Omit<CartLine, "quantity">, quantity?: number) => void
-  setQuantity: (productId: number, quantity: number) => void
-  remove: (productId: number) => void
+  setQuantity: (variantId: number, quantity: number) => void
+  remove: (variantId: number) => void
   clear: () => void
 }
 
@@ -114,4 +115,24 @@ export function useCart() {
     throw new Error("useCart must be used within a CartProvider")
   }
   return ctx
+}
+
+/**
+ * Cart state for one product, aggregated across all its variants (sizes):
+ * `qtyByVariantId` holds each variant's line quantity (absent = 0) and
+ * `totalQty` is the sum shown on product-card steppers.
+ */
+export function useProductCart(product: Product) {
+  const { lines } = useCart()
+  return useMemo(() => {
+    const variantIds = new Set(product.variants.map((v) => v.id))
+    const qtyByVariantId = new Map<number, number>()
+    let totalQty = 0
+    for (const line of lines) {
+      if (!variantIds.has(line.variant_id)) continue
+      qtyByVariantId.set(line.variant_id, line.quantity)
+      totalQty += line.quantity
+    }
+    return { qtyByVariantId, totalQty }
+  }, [lines, product.variants])
 }

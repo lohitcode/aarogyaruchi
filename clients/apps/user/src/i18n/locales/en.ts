@@ -208,6 +208,12 @@ export const en = {
     similarHeading: "More from this range.",
     notFoundTitle: "Product not found",
     notFoundBody: "The product you're looking for doesn't exist.",
+    variantSheet: {
+      description: "Pick the sizes and quantities you want",
+      item: "item",
+      items: "items",
+      done: "Done",
+    },
   },
 
   auth: {

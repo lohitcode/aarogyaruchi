@@ -202,6 +202,12 @@ export const te: Messages = {
     similarHeading: "ఈ శ్రేణిలో మరిన్ని.",
     notFoundTitle: "ఉత్పత్తి దొరకలేదు",
     notFoundBody: "మీరు వెతుకుతున్న ఉత్పత్తి లేదు.",
+    variantSheet: {
+      description: "కావాలైన సైజులు మరియు సంఖ్యలను ఎంచుకోండి",
+      item: "ఐటమ్",
+      items: "ఐటమ్స్",
+      done: "పూర్తయింది",
+    },
   },
 
   auth: {
