@@ -107,13 +107,14 @@ export function VariantQtySheet({
                     min={0}
                     max={MAX_PER_VARIANT}
                     size="compact"
+                    spread
                     increaseLabel={t.productDetail.increaseQuantity}
                     decreaseLabel={t.productDetail.decreaseQuantity}
                   />
                 ) : (
                   <Button
                     size="sm"
-                    className="rounded-sm bg-primary text-primary-foreground hover:bg-primary/90"
+                    className="w-full rounded-sm bg-primary text-primary-foreground hover:bg-primary/90"
                     onClick={() => setVariantQty(variant, 1)}
                   >
                     <Plus className="mr-1 h-4 w-4" />

@@ -7,6 +7,8 @@ type QuantityStepperProps = {
   max?: number
   /** "default" = detail-page sized cells, "compact" = card/sheet footer cells. */
   size?: "default" | "compact"
+  /** Spread −/qty/+ across the full width (sheet cells); default hugs inline. */
+  spread?: boolean
   increaseLabel: string
   decreaseLabel: string
 }
@@ -27,6 +29,7 @@ export function QuantityStepper({
   min = 1,
   max = 10,
   size = "default",
+  spread = false,
   increaseLabel,
   decreaseLabel,
 }: QuantityStepperProps) {
@@ -35,7 +38,13 @@ export function QuantityStepper({
   const icon = compact ? "h-3.5 w-3.5" : "h-4 w-4"
 
   return (
-    <div className="inline-flex items-center border border-black/15">
+    <div
+      className={`${
+        spread
+          ? "flex w-full items-center justify-between"
+          : "inline-flex items-center"
+      } border border-black/15`}
+    >
       <button
         type="button"
         onClick={(event) =>
@@ -48,9 +57,9 @@ export function QuantityStepper({
         <Minus className={icon} />
       </button>
       <span
-        className={`flex ${cell} items-center justify-center border-x border-black/15 ${
+        className={`flex ${cell} items-center justify-center ${
           compact ? "text-sm font-medium" : "text-base font-medium"
-        }`}
+        }${spread ? "" : " border-x border-black/15"}`}
       >
         {value}
       </span>
