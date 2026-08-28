@@ -110,8 +110,9 @@ export type BatchDetail = BatchRow & {
   orders: Array<{ order_id: number; code: string; status: string; delivery_date: string; total_paise: number }>
 }
 
-/** GET /v1/admin/batches/current — today's batch header (created empty if
- * no order has landed yet today; checkout/dashboard already do this). */
+/** GET /v1/admin/batches/current — today's batch header. Before the day's
+ * first order the batch row does not exist yet (checkout creates it), so
+ * batch_id comes back 0 with the resolved dates/cutoff still populated. */
 export type CurrentBatch = {
   batch_id: number
   order_date: string

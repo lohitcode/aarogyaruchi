@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { adminApi, type BatchDetail, type BatchRow } from "../lib/admin"
+import { adminApi, type BatchDetail } from "../lib/admin"
 import { formatPaise } from "../lib/api"
 import { connectWs } from "../lib/ws"
 
@@ -61,10 +61,10 @@ function batchOptionLabel(b: {
   return `Delivering ${b.delivery_date} · ${b.order_count} ${plural}${openTag}`
 }
 
-function AdminProduction() {
+export function AdminProduction() {
   const queryClient = useQueryClient()
-  // null = follow the current (today's) batch until the picker is used.
-  const [pickedId, setPickedId] = useState<number | null>(null)
+  // "" = follow today's batch (even before it exists); a batch id = pinned.
+  const [pickedId, setPickedId] = useState<string>("")
 
   const current = useQuery({
     queryKey: ["admin-batch-current"],
@@ -75,7 +75,11 @@ function AdminProduction() {
     queryFn: () => adminApi.batches(),
   })
 
-  const batchId = pickedId ?? current.data?.batch_id ?? null
+  // Before the day's first order, /batches/current reports batch_id 0 —
+  // the batch row is only created at checkout. Nothing to fetch then; the
+  // sheet renders empty from the resolved header below.
+  const currentId = current.data?.batch_id || null
+  const batchId = pickedId !== "" ? Number(pickedId) : currentId
   const sheet = useQuery({
     queryKey: ["production-sheet", batchId ?? 0],
     queryFn: () => adminApi.batch(batchId as number),
@@ -100,29 +104,11 @@ function AdminProduction() {
     return close
   }, [queryClient])
 
-  // The picker lists recent batches; the current batch may be brand new
-  // (created empty) and missing from the list until the next refresh —
-  // splice it in so the default selection is always present.
-  const options: BatchRow[] = useMemo(() => {
-    const list = batches.data?.batches ?? []
-    if (current.data && !list.some((b) => b.batch_id === current.data.batch_id)) {
-      return [
-        {
-          batch_id: current.data.batch_id,
-          order_date: current.data.order_date,
-          delivery_date: current.data.delivery_date,
-          cutoff_policy: current.data.cutoff_policy,
-          status: current.data.status,
-          order_count: sheet.data?.counts.order_count ?? 0,
-          cancelled_count: 0,
-          delivered_count: 0,
-          total_paise: 0,
-        },
-        ...list,
-      ]
-    }
-    return list
-  }, [batches.data, current.data, sheet.data])
+  // Header info comes from the fetched batch, or — for a day with no
+  // orders yet — from the resolved current-batch header (dates, cutoff,
+  // status are all known without a persisted row).
+  const header: Pick<BatchDetail, "order_date" | "delivery_date" | "cutoff_policy" | "status"> | null =
+    sheet.data ?? (currentId == null ? (current.data ?? null) : null)
 
   const groups = useMemo(
     () => groupPrepByProduct(sheet.data?.preparation_summary ?? []),
@@ -130,14 +116,16 @@ function AdminProduction() {
   )
   const totalUnits = groups.reduce((sum, g) => sum + g.totalQty, 0)
 
-  if (sheet.isLoading) {
+  if (current.isLoading || (batchId != null && sheet.isLoading)) {
     return <p className="text-sm text-neutral-500">Loading…</p>
   }
-  if (sheet.error || !sheet.data) {
+  if (!header || sheet.error) {
     return <p className="text-sm text-red-600">Failed to load the production sheet.</p>
   }
 
-  const { counts, order_date, delivery_date, cutoff_policy, status } = sheet.data
+  const { order_date, delivery_date, cutoff_policy, status } = header
+  const todayPending = batchId == null // following today and no batch row exists yet
+  const counts = sheet.data?.counts
 
   return (
     <div>
@@ -152,17 +140,20 @@ function AdminProduction() {
         <label className="flex items-center gap-2 text-sm text-neutral-600">
           <span className="whitespace-nowrap">Batch</span>
           <select
-            value={batchId ?? ""}
-            onChange={(e) => setPickedId(Number(e.target.value))}
-            disabled={batchId == null}
+            value={pickedId}
+            onChange={(e) => setPickedId(e.target.value)}
             className="border border-neutral-300 bg-white px-2 py-1.5 text-sm"
           >
-            {batchId == null && <option value="">Loading…</option>}
-            {options.map((b) => (
-              <option key={b.batch_id} value={b.batch_id}>
-                {batchOptionLabel(b)}
-              </option>
-            ))}
+            <option value="">
+              Today · delivering {current.data?.delivery_date ?? "…"}
+            </option>
+            {(batches.data?.batches ?? [])
+              .filter((b) => b.batch_id !== currentId)
+              .map((b) => (
+                <option key={b.batch_id} value={b.batch_id}>
+                  {batchOptionLabel(b)}
+                </option>
+              ))}
           </select>
         </label>
         <button
@@ -178,8 +169,9 @@ function AdminProduction() {
       <section className="print:border-0 mt-4 border border-neutral-200 bg-white">
         {groups.length === 0 ? (
           <p className="px-4 py-8 text-center text-sm text-neutral-500">
-            Nothing to prepare yet — the sheet fills in as orders land
-            {status === "open" ? " (before the cutoff)" : ""}.
+            {todayPending
+              ? "No orders in today's batch yet — the sheet fills in as orders land (before the cutoff)."
+              : `Nothing to prepare${status === "open" ? " — orders can still land (before the cutoff)" : ""}.`}
           </p>
         ) : (
           <table className="w-full text-sm">
@@ -216,11 +208,13 @@ function AdminProduction() {
             </tbody>
           </table>
         )}
-        <p className="border-t border-neutral-200 px-4 py-3 text-sm text-neutral-600 print:border-neutral-400">
-          {counts.order_count} orders · {totalUnits} units ·{" "}
-          {formatPaise(counts.total_paise)}
-          {counts.cancelled_count > 0 && ` · ${counts.cancelled_count} cancelled`}
-        </p>
+        {counts && (
+          <p className="border-t border-neutral-200 px-4 py-3 text-sm text-neutral-600 print:border-neutral-400">
+            {counts.order_count} orders · {totalUnits} units ·{" "}
+            {formatPaise(counts.total_paise)}
+            {counts.cancelled_count > 0 && ` · ${counts.cancelled_count} cancelled`}
+          </p>
+        )}
       </section>
     </div>
   )
