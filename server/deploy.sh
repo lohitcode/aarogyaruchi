@@ -87,9 +87,10 @@ echo "==> Saving image..."
 docker save $IMAGE_NAME | gzip > /tmp/aarogya-server.tar.gz
 
 echo "==> Copying files to server..."
-ssh $SERVER "sudo mkdir -p /app/secrets && sudo chown -R ubuntu:ubuntu /app"
+ssh $SERVER "sudo mkdir -p /app/secrets /app/monitoring && sudo chown -R ubuntu:ubuntu /app"
 scp /tmp/aarogya-server.tar.gz $SERVER:/tmp/
 scp docker-compose.yml Caddyfile $SERVER:/app/
+scp monitoring/config.alloy $SERVER:/app/monitoring/
 # sops-encrypted env (ciphertext — the box's age key is the only reader).
 # /app/.env is hydrated from it on every deploy; plaintext never ships.
 scp secrets/prod.env $SERVER:/app/secrets/prod.env
@@ -99,6 +100,11 @@ ssh $SERVER << 'EOF'
   set -e
   cd /app
   COMPOSE="sudo docker compose --profile local --profile proxy --profile green"
+  # Monitoring joins ONLY the infra-reconcile line below. It must not sit in
+  # $COMPOSE: exec/run/stop calls interpolate every enabled-profile service,
+  # and alloy's :? guards would block the whole deploy until the Grafana
+  # Cloud creds land in the sops env.
+  COMPOSE_MON="$COMPOSE --profile monitoring"
 
   # Hydrate /app/.env from the sops-encrypted env, validating shape before
   # the swap. This replaces the old first-deploy seeding entirely: secrets
@@ -135,7 +141,18 @@ ssh $SERVER << 'EOF'
   # ship (AOF replays; sessions survive). NOTE: the old slot keeps serving
   # without the valkey password until the cutover below — a one-time
   # degraded window measured in seconds during this secrets transition.
-  $COMPOSE up -d postgres valkey caddy adminer redis-commander </dev/null
+  # Monitoring (Grafana Cloud) joins the reconcile only once its creds are
+  # hydrated in /app/.env — until then deploys never block on it. The alloy
+  # env uses soft defaults (dev/local flows share this file and carry no
+  # Grafana vars); a partial key set surfaces as alloy crash-looping.
+  MONITORING=""
+  if grep -q '^GRAFANA_CLOUD_API_KEY=.' /app/.env; then
+    MONITORING="node-exporter postgres-exporter redis-exporter alloy"
+    echo "==> Monitoring profile: enabled"
+  else
+    echo "==> Monitoring profile: skipped (GRAFANA_CLOUD_API_KEY not in .env yet)"
+  fi
+  $COMPOSE_MON up -d postgres valkey caddy adminer redis-commander $MONITORING </dev/null
   for i in $(seq 1 30); do
     $COMPOSE exec -T postgres pg_isready -U aarogya -d aarogyaruchi </dev/null >/dev/null 2>&1 && break
     sleep 1

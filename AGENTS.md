@@ -116,6 +116,21 @@ Blue-green runbook (deploy.sh does this automatically):
   two-slot overlap (the hub is per-instance; proper fix later = valkey
   pub/sub fanout); SSE chat streams are cut at cutover and re-issued by
   clients.
+
+Monitoring (Grafana Cloud free tier — see docs/grafana-cloud-monitoring.md):
+- `--profile monitoring` (node/postgres/redis exporters + grafana/alloy)
+  is PROD-ONLY and activates itself when `GRAFANA_CLOUD_API_KEY` appears
+  in the sops prod env; until then deploys skip it. Never add that profile
+  to dev/local flows, never put it in the shared `$COMPOSE` deploy var
+  (compose interpolates the whole file regardless of profiles — use the
+  separate `COMPOSE_MON`), and keep alloy env guards SOFT (`${V:-}`):
+  `:?` guards break every non-prod flow.
+- Free-tier rules: scrape interval stays 60s (DPM-normalized billing),
+  metrics label by route PATTERN never raw path, log labels are
+  container_name only. `/metrics` on the API is gated by
+  `METRICS_ENABLED` (fail-closed, default off, network-internal only).
+- Don't casually change caddy's compose config (e.g. adding the logging
+  anchor): it force-recreates the proxy mid-deploy = brief outage.
 - **Nothing is ever built on the server** — local cross-compile + local
   image build; the VPS Docker surface is strictly load/up/stop/rm/tag.
 - A valkey blip answers **503** `session store unavailable`, not 401 —

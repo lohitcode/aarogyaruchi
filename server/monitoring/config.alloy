@@ -1,0 +1,69 @@
+// Grafana Alloy — the only component with cloud credentials. Scrapes the
+// in-network exporters and both API slots' /metrics, tails every container's
+// json-file log stream via the read-only docker socket, and pushes both to
+// Grafana Cloud (free tier).
+//
+// Cardinality rules of the road (free tier = 10k active series, hard-capped
+// with 403s — never billed):
+//   - scrape_interval stays at 60s: usage is DPM-normalized, so a 30s
+//     interval would double the billable series.
+//   - the API labels by route PATTERN (middleware/metrics.go), never raw
+//     path; log streams carry only container_name as label.
+
+// ---------------------------------------------------------------- metrics
+
+prometheus.remote_write "grafana_cloud" {
+	endpoint {
+		url = sys.env("GRAFANA_CLOUD_PROM_URL")
+		basic_auth {
+			username = sys.env("GRAFANA_CLOUD_PROM_USERNAME")
+			password = sys.env("GRAFANA_CLOUD_API_KEY")
+		}
+	}
+}
+
+prometheus.scrape "infra" {
+	scrape_interval = "60s"
+	targets = [
+		{ "__address__" = "node-exporter:9100", "job" = "node", "instance" = "prod-vps" },
+		{ "__address__" = "postgres-exporter:9187", "job" = "postgres", "instance" = "aarogya-pg" },
+		{ "__address__" = "redis-exporter:9121", "job" = "valkey", "instance" = "aarogya-valkey" },
+	]
+	forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+// Both blue-green slots, explicitly: the idle one reads up==0 until the next
+// deploy flips the slots — free deploy telemetry. METRICS_ENABLED gates the
+// Go side; the /metrics route 404s (target down) when it is off.
+prometheus.scrape "goapi" {
+	scrape_interval = "60s"
+	targets = [
+		{ "__address__" = "server-blue:8080", "job" = "goapi", "instance" = "blue" },
+		{ "__address__" = "server-green:8080", "job" = "goapi", "instance" = "green" },
+	]
+	forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+// ------------------------------------------------------------------- logs
+
+discovery.docker "containers" {
+	host             = "unix:///var/run/docker.sock"
+	refresh_interval = "15s"
+}
+
+loki.source.docker "containers" {
+	host          = "unix:///var/run/docker.sock"
+	targets       = discovery.docker.containers.targets
+	forward_to    = [loki.write.grafana_cloud.receiver]
+	relabel_rules = discovery.docker.containers.relabel_rules
+}
+
+loki.write "grafana_cloud" {
+	endpoint {
+		url = sys.env("GRAFANA_CLOUD_LOKI_URL")
+		basic_auth {
+			username = sys.env("GRAFANA_CLOUD_LOKI_USERNAME")
+			password = sys.env("GRAFANA_CLOUD_API_KEY")
+		}
+	}
+}

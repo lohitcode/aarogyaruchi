@@ -120,7 +120,7 @@ func main() {
 		}
 	}()
 
-	r := router.New(h, auth, cfg.AllowedOrigins)
+	r := router.New(h, auth, cfg.AllowedOrigins, cfg.MetricsEnabled)
 
 	// Create server
 	srv := &http.Server{

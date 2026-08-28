@@ -67,7 +67,7 @@ func integrationServer(t *testing.T) (http.Handler, *handler.Handler, *sqlc.Quer
 	cfg := &config.Config{Env: "development"}
 	h := handler.New(pool, c, nil, tokens, sessions, hub, cfg, nil, nil)
 	auth := middleware.NewAuth(sessions, tokens, sqlc.New(pool))
-	mux := router.New(h, auth, []string{"http://localhost:3000"})
+	mux := router.New(h, auth, []string{"http://localhost:3000"}, true)
 	return mux, h, sqlc.New(pool), ctx
 }
 

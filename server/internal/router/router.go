@@ -8,19 +8,30 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func New(h *handler.Handler, auth *middleware.AuthMiddleware, allowedOrigins []string) *chi.Mux {
+func New(h *handler.Handler, auth *middleware.AuthMiddleware, allowedOrigins []string, metricsEnabled bool) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Global middleware
 	r.Use(chiMiddleware.Logger)
 	r.Use(chiMiddleware.Recoverer)
 	r.Use(chiMiddleware.RequestID)
+	if metricsEnabled {
+		r.Use(middleware.Metrics())
+	}
 
 	// Health (unversioned — load balancers and monitors use it)
 	r.Get("/health", h.Health)
 	r.Get("/health/detailed", h.HealthDetailed)
+
+	// Prometheus exposition (unversioned, pre-CORS). Network-internal only:
+	// the slots publish no host ports and Caddy routes no /metrics path —
+	// Alloy scrapes it in-network. Gated by METRICS_ENABLED (fail closed).
+	if metricsEnabled {
+		r.Get("/metrics", promhttp.Handler().ServeHTTP)
+	}
 
 	// Guest chatbot (public SSE; CORS restricted to the website origins)
 	r.Group(func(r chi.Router) {

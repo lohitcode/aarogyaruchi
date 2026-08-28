@@ -31,6 +31,11 @@ type Config struct {
 	// OTPFixedEnabled pins every OTP to 123456 (staging/pre-launch mode).
 	// Never enabled silently in production: must be set explicitly.
 	OTPFixedEnabled bool
+	// MetricsEnabled serves /metrics and records RED metrics (rate, errors,
+	// duration per route pattern). Fails closed: the endpoint is opt-in and
+	// only reachable inside the compose network (no host ports, no Caddy
+	// route) — Alloy scrapes it.
+	MetricsEnabled bool
 	// SeedAdminPhones / SeedPartnerPhones are pre-provisioned privileged
 	// accounts upserted at boot from private server environment variables.
 	SeedAdminPhones   []string
@@ -103,6 +108,7 @@ func Load() (*Config, error) {
 	// Fail closed: fixed OTP must be opted into explicitly (dev env files
 	// set it to true); a missing flag must never enable it anywhere.
 	cfg.OTPFixedEnabled = getEnvBool("OTP_FIXED_ENABLED", false)
+	cfg.MetricsEnabled = getEnvBool("METRICS_ENABLED", false)
 	cfg.SeedAdminPhones = getEnvList("SEED_ADMIN_PHONES", nil)
 	cfg.SeedPartnerPhones = getEnvList("SEED_PARTNER_PHONES", nil)
 	cfg.PartnerTokenSecret = getEnv("PARTNER_TOKEN_SECRET", "")

@@ -113,6 +113,7 @@ services:
     image: adminer:4
     container_name: aarogya-adminer
     restart: unless-stopped
+    logging: *default-logging
     profiles: ["proxy"]
     environment:
       ADMINER_DEFAULT_SERVER: postgres
@@ -124,6 +125,7 @@ services:
     image: rediscommander/redis-commander:latest
     container_name: aarogya-redis-commander
     restart: unless-stopped
+    logging: *default-logging
     profiles: ["proxy"]
     environment:
       REDIS_HOST: valkey
@@ -133,6 +135,9 @@ services:
       - valkey
 
   # Public HTTPS reverse proxy for the API (enabled with --profile proxy).
+  # No logging anchor on purpose: adding one would change the container
+  # config and force a recreate (brief outage) on the next deploy, and this
+  # Caddyfile logs no access lines anyway — only startup/errors.
   caddy:
     image: caddy:2-alpine
     container_name: aarogya-caddy
@@ -149,8 +154,102 @@ services:
     depends_on:
       - server-blue
 
+  # ---- Monitoring (Grafana Cloud; enabled with --profile monitoring) ----
+  # Prod-only: deploy.sh reconciles these when /app/.env carries
+  # GRAFANA_CLOUD_API_KEY. All telemetry flows OUTBOUND to Grafana Cloud —
+  # no inbound ports, no Caddy routes. Alloy scrapes at 60s on purpose:
+  # Grafana Cloud free-tier usage is DPM-normalized, so faster scraping
+  # multiplies billable series.
+
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:v1.12.1
+    container_name: aarogya-node-exporter
+    restart: unless-stopped
+    logging: *default-logging
+    profiles: ["monitoring"]
+    command: ["--path.rootfs=/host"]
+    pid: host
+    volumes:
+      - "/:/host:ro,rslave"
+    deploy:
+      resources:
+        limits:
+          memory: 96m
+
+  # Reuses the app role so deploy.sh's per-deploy ALTER USER rotation keeps
+  # this DSN valid; compose recreates the container when .env changes.
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.20.1
+    container_name: aarogya-postgres-exporter
+    restart: unless-stopped
+    logging: *default-logging
+    profiles: ["monitoring"]
+    environment:
+      DATA_SOURCE_NAME: "postgresql://aarogya:${POSTGRES_PASSWORD:?set in .env}@postgres:5432/aarogya_ruchi?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 96m
+
+  # oliver006/redis_exporter officially supports Valkey 7/8/9.
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.90.0
+    container_name: aarogya-redis-exporter
+    restart: unless-stopped
+    logging: *default-logging
+    profiles: ["monitoring"]
+    environment:
+      REDIS_ADDR: "redis://valkey:6379"
+      REDIS_PASSWORD: ${VALKEY_PASSWORD:?set in .env}
+    depends_on:
+      valkey:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+
+  # Scrapes the exporters + both API slots' /metrics, tails container logs,
+  # and pushes both streams to Grafana Cloud (config: monitoring/config.alloy).
+  alloy:
+    image: grafana/alloy:v1.19.2
+    container_name: aarogya-alloy
+    restart: unless-stopped
+    logging: *default-logging
+    profiles: ["monitoring"]
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./monitoring/config.alloy:/etc/alloy/config.alloy:ro
+      # Read-only docker socket: service discovery + log tailing only.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - alloy_data:/var/lib/alloy/data
+    environment:
+      # Soft defaults on purpose: compose interpolates the whole file even
+      # for inactive profiles (dev box and local dev carry no Grafana vars),
+      # so :? guards would break every non-prod flow. Activation is gated in
+      # deploy.sh by the GRAFANA_CLOUD_API_KEY grep; a partial key set
+      # surfaces as alloy crash-looping (docker logs aarogya-alloy).
+      GRAFANA_CLOUD_PROM_URL: ${GRAFANA_CLOUD_PROM_URL:-}
+      GRAFANA_CLOUD_PROM_USERNAME: ${GRAFANA_CLOUD_PROM_USERNAME:-}
+      GRAFANA_CLOUD_LOKI_URL: ${GRAFANA_CLOUD_LOKI_URL:-}
+      GRAFANA_CLOUD_LOKI_USERNAME: ${GRAFANA_CLOUD_LOKI_USERNAME:-}
+      GRAFANA_CLOUD_API_KEY: ${GRAFANA_CLOUD_API_KEY:-}
+    deploy:
+      resources:
+        limits:
+          memory: 320m
+
 volumes:
   pg_data:
   valkey_data:
   caddy_data:
   caddy_config:
+  alloy_data:
