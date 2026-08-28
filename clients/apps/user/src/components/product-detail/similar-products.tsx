@@ -1,21 +1,21 @@
 import type { Product } from "../../lib/api"
-import { useCatalog } from "../../lib/catalog"
 import { useMessages } from "../../i18n"
 import { ProductCard } from "../products/product-card"
 import { SectionLabel } from "../layout/section-label"
 
 type SimilarProductsProps = {
   product: Product
+  /** Full catalog from the $slug route loader — guaranteed resolved. */
+  products: Product[]
 }
 
-export function SimilarProducts({ product }: SimilarProductsProps) {
+export function SimilarProducts({ product, products }: SimilarProductsProps) {
   const t = useMessages()
-  const { products, loading } = useCatalog()
   const similar = products
     .filter((p) => p.category === product.category && p.id !== product.id)
     .slice(0, 3)
 
-  if (!loading && similar.length === 0) return null
+  if (similar.length === 0) return null
 
   return (
     <section className="mt-24">

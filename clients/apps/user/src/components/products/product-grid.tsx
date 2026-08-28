@@ -1,13 +1,20 @@
 import { useMemo, useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
-import { useCatalog, catalogCategories } from "../../lib/catalog"
+import type { Product } from "../../lib/api"
+import { catalogCategories } from "../../lib/catalog"
 import { useMessages } from "../../i18n"
 import { CategoryFilter } from "./category-filter"
 import { ProductCard } from "./product-card"
 
-export function ProductGrid() {
+type ProductGridProps = {
+  /** From the /products route loader — guaranteed resolved before render. */
+  products: Product[]
+  /** True when the loader's catalog fetch failed. */
+  failed?: boolean
+}
+
+export function ProductGrid({ products, failed }: ProductGridProps) {
   const [category, setCategory] = useState("all")
-  const { products, loading, error } = useCatalog()
   const t = useMessages()
 
   const categories = useMemo(() => catalogCategories(products), [products])
@@ -17,10 +24,7 @@ export function ProductGrid() {
       ? products
       : products.filter((p) => p.category === category)
 
-  if (loading) {
-    return <p className="text-muted-foreground">{t.shop.loading}</p>
-  }
-  if (error) {
+  if (failed) {
     return <p className="text-destructive">{t.shop.loadProductsFailed}</p>
   }
 

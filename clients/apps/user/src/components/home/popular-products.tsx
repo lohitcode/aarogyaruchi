@@ -1,16 +1,20 @@
 import { Link } from "@tanstack/react-router"
 import { ArrowRight } from "lucide-react"
-import { useCatalog } from "../../lib/catalog"
+import type { Product } from "../../lib/api"
 import { useMessages } from "../../i18n"
 import { ProductCard } from "../products/product-card"
 import { SectionWrapper } from "../layout/section-wrapper"
 import { SectionLabel } from "../layout/section-label"
 
-export function PopularProducts() {
+type PopularProductsProps = {
+  /** From the home route loader — guaranteed resolved before render. */
+  products: Product[]
+}
+
+export function PopularProducts({ products }: PopularProductsProps) {
   const t = useMessages()
-  const { products, loading } = useCatalog()
   const featured = products.filter((p) => p.is_featured).slice(0, 3)
-  if (!loading && featured.length === 0) return null
+  if (featured.length === 0) return null
 
   return (
     <SectionWrapper id="products" className="bg-secondary/40">

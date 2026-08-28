@@ -3,13 +3,21 @@ import { Footer } from "../../components/layout/footer"
 import { ProductGrid } from "../../components/products/product-grid"
 import { SectionWrapper } from "../../components/layout/section-wrapper"
 import { SectionLabel } from "../../components/layout/section-label"
+import { fetchCatalog } from "../../lib/catalog"
 import { useMessages, usePageMetadata } from "../../i18n"
 
 export const Route = createFileRoute("/products/")({
+  // Loader data is serialized to the client, so SSR and the client's first
+  // render both have the catalog — no hydration mismatch, no loading flash.
+  loader: async () => {
+    const products = await fetchCatalog().catch(() => null)
+    return { products: products ?? [], failed: products === null }
+  },
   component: ProductsPage,
 })
 
 function ProductsPage() {
+  const { products, failed } = Route.useLoaderData()
   const t = useMessages()
   usePageMetadata({
     title: t.meta.productsTitle,
@@ -26,7 +34,7 @@ function ProductsPage() {
             {t.productsPage.subtitle}
           </p>
           <div className="mt-12">
-            <ProductGrid />
+            <ProductGrid products={products} failed={failed} />
           </div>
         </SectionWrapper>
       </main>

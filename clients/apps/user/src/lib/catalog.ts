@@ -1,9 +1,14 @@
-import { useEffect, useState } from "react"
 import { api, type Product } from "./api"
 
 /**
  * The live catalog from GET /v1/products — the database is the single
  * source of truth for products, prices, and availability.
+ *
+ * The module cache dedupes fetches within one runtime (browser tab or
+ * server isolate); components must NOT read it during render. Data flows
+ * through route loaders (loaderData is serialized to the client), so SSR
+ * and the client's first render are identical — reading the cache in a
+ * component reintroduces the hydration mismatch this layout fixed.
  */
 
 let cache: Product[] | null = null
@@ -22,46 +27,6 @@ export async function fetchCatalog(): Promise<Product[]> {
       inflight = null
     })
   return inflight
-}
-
-export async function fetchProductBySlug(slug: string): Promise<Product | null> {
-  const list = await fetchCatalog()
-  return list.find((p) => p.slug === slug) ?? null
-}
-
-/** Hook: full catalog with loading/error state. */
-export function useCatalog(): {
-  products: Product[]
-  loading: boolean
-  error: string | null
-} {
-  const [products, setProducts] = useState<Product[]>(cache ? [...cache] : [])
-  const [loading, setLoading] = useState(!cache)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (cache) {
-      setProducts([...cache])
-      setLoading(false)
-      return
-    }
-    let cancelled = false
-    fetchCatalog()
-      .then((list) => {
-        if (!cancelled) setProducts(list)
-      })
-      .catch(() => {
-        if (!cancelled) setError("catalog unavailable")
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  return { products, loading, error }
 }
 
 /** Distinct categories present in the catalog, in first-seen order. */
