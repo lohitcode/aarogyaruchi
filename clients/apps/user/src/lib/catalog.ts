@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react"
+import { useRouter } from "@tanstack/react-router"
 import { api, type Product } from "./api"
 
 /**
@@ -38,4 +40,37 @@ export function catalogCategories(products: Product[]): string[] {
     }
   }
   return seen
+}
+
+/**
+ * Server-side loaders cannot always reach the API: worker subrequests to the
+ * proxied api.<zone> hostname redirect-loop at the Cloudflare edge (same-zone
+ * fetch quirk), so on failure SSR returns `catalogFailed: true` and renders
+ * the same recovering state the client's first render shows — hydration stays
+ * exact. In the browser the direct fetch works: pull the catalog here, then
+ * re-run the loaders so the route picks up the data. Returns true when the
+ * browser retry itself failed (caller shows the error UI).
+ */
+export function useCatalogRecovery(catalogFailed: boolean): boolean {
+  const router = useRouter()
+  const [retryFailed, setRetryFailed] = useState(false)
+
+  useEffect(() => {
+    if (!catalogFailed) return
+    let cancelled = false
+    fetchCatalog()
+      .then(() => {
+        if (!cancelled) router.invalidate()
+      })
+      .catch(() => {
+        if (!cancelled) setRetryFailed(true)
+      })
+    return () => {
+      cancelled = true
+    }
+    // One retry per mount: catalogFailed stays true across the invalidation,
+    // so depending on it alone must not retrigger the fetch.
+  }, [catalogFailed, router])
+
+  return retryFailed
 }

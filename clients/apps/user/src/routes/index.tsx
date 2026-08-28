@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 import type { Product } from "../lib/api"
-import { fetchCatalog } from "../lib/catalog"
+import { fetchCatalog, useCatalogRecovery } from "../lib/catalog"
 import { Footer } from "../components/layout/footer"
 import { HeroSection } from "../components/home/hero-section"
 import { AboutSection } from "../components/home/about-section"
@@ -16,15 +16,21 @@ import { useMessages, usePageMetadata } from "../i18n"
 
 export const Route = createFileRoute("/")({
   // Loader data is serialized to the client so the featured-products
-  // section hydrates identically to its server render.
-  loader: async () => ({
-    products: await fetchCatalog().catch((): Product[] => []),
-  }),
+  // section hydrates identically to its server render. If the worker can't
+  // reach the API (same-zone redirect loop), the browser retry recovers.
+  loader: async () => {
+    try {
+      return { products: await fetchCatalog(), catalogFailed: false }
+    } catch {
+      return { products: [] as Product[], catalogFailed: true }
+    }
+  },
   component: HomePage,
 })
 
 function HomePage() {
-  const { products } = Route.useLoaderData()
+  const { products, catalogFailed } = Route.useLoaderData()
+  useCatalogRecovery(catalogFailed)
   const t = useMessages()
   usePageMetadata({
     title: t.meta.homeTitle,

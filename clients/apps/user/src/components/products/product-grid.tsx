@@ -9,11 +9,13 @@ import { ProductCard } from "./product-card"
 type ProductGridProps = {
   /** From the /products route loader — guaranteed resolved before render. */
   products: Product[]
-  /** True when the loader's catalog fetch failed. */
+  /** SSR fetch failed and the browser is retrying (brief loading state). */
+  recovering?: boolean
+  /** Catalog fetch failed even after the browser retry. */
   failed?: boolean
 }
 
-export function ProductGrid({ products, failed }: ProductGridProps) {
+export function ProductGrid({ products, recovering, failed }: ProductGridProps) {
   const [category, setCategory] = useState("all")
   const t = useMessages()
 
@@ -26,6 +28,9 @@ export function ProductGrid({ products, failed }: ProductGridProps) {
 
   if (failed) {
     return <p className="text-destructive">{t.shop.loadProductsFailed}</p>
+  }
+  if (recovering && products.length === 0) {
+    return <p className="text-muted-foreground">{t.shop.loading}</p>
   }
 
   return (

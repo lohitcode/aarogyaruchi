@@ -3,21 +3,28 @@ import { Footer } from "../../components/layout/footer"
 import { ProductGrid } from "../../components/products/product-grid"
 import { SectionWrapper } from "../../components/layout/section-wrapper"
 import { SectionLabel } from "../../components/layout/section-label"
-import { fetchCatalog } from "../../lib/catalog"
+import type { Product } from "../../lib/api"
+import { fetchCatalog, useCatalogRecovery } from "../../lib/catalog"
 import { useMessages, usePageMetadata } from "../../i18n"
 
 export const Route = createFileRoute("/products/")({
   // Loader data is serialized to the client, so SSR and the client's first
   // render both have the catalog — no hydration mismatch, no loading flash.
+  // When the worker can't reach the API (same-zone redirect loop), the page
+  // renders a recovering state and the browser retry refills the data.
   loader: async () => {
-    const products = await fetchCatalog().catch(() => null)
-    return { products: products ?? [], failed: products === null }
+    try {
+      return { products: await fetchCatalog(), catalogFailed: false }
+    } catch {
+      return { products: [] as Product[], catalogFailed: true }
+    }
   },
   component: ProductsPage,
 })
 
 function ProductsPage() {
-  const { products, failed } = Route.useLoaderData()
+  const { products, catalogFailed } = Route.useLoaderData()
+  const retryFailed = useCatalogRecovery(catalogFailed)
   const t = useMessages()
   usePageMetadata({
     title: t.meta.productsTitle,
@@ -34,7 +41,11 @@ function ProductsPage() {
             {t.productsPage.subtitle}
           </p>
           <div className="mt-12">
-            <ProductGrid products={products} failed={failed} />
+            <ProductGrid
+              products={products}
+              recovering={catalogFailed && !retryFailed}
+              failed={retryFailed}
+            />
           </div>
         </SectionWrapper>
       </main>
