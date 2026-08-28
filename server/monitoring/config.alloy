@@ -52,10 +52,9 @@ discovery.docker "containers" {
 }
 
 loki.source.docker "containers" {
-	host          = "unix:///var/run/docker.sock"
-	targets       = discovery.docker.containers.targets
-	forward_to    = [loki.write.grafana_cloud.receiver]
-	relabel_rules = discovery.docker.containers.relabel_rules
+	host       = "unix:///var/run/docker.sock"
+	targets    = discovery.docker.containers.targets
+	forward_to = [loki.write.grafana_cloud.receiver]
 }
 
 loki.write "grafana_cloud" {
