@@ -72,3 +72,24 @@
 input[type="checkbox"] {
   accent-color: var(--primary);
 }
+
+/*
+ * Printing the production sheet (and anything else marked .no-print):
+ * strip the app chrome — sidebar + its spacer, mobile header, page
+ * controls — so the kitchen gets a clean sheet of product totals.
+ */
+@media print {
+  @page {
+    margin: 1.5cm;
+  }
+
+  [data-slot="sidebar"],
+  [data-slot="sidebar-gap"],
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+  }
+}

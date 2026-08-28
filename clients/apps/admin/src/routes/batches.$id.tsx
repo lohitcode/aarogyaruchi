@@ -93,7 +93,7 @@ function AdminBatchDetail() {
               </thead>
               <tbody>
                 {data.preparation_summary.map((p) => (
-                  <tr key={p.product_id} className="border-b border-neutral-100 last:border-0">
+                  <tr key={p.variant_id} className="border-b border-neutral-100 last:border-0">
                     <td className="px-4 py-2">
                       {p.name}
                       {p.size_label ? <span className="text-neutral-400"> · {p.size_label}</span> : null}

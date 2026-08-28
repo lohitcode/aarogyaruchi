@@ -98,6 +98,7 @@ export type BatchRow = {
 export type BatchDetail = BatchRow & {
   counts: { order_count: number; cancelled_count: number; total_paise: number; delivered_count: number }
   preparation_summary: Array<{
+    variant_id: number
     product_id: number
     name: string
     slug: string
@@ -107,6 +108,16 @@ export type BatchDetail = BatchRow & {
     order_count: number
   }>
   orders: Array<{ order_id: number; code: string; status: string; delivery_date: string; total_paise: number }>
+}
+
+/** GET /v1/admin/batches/current — today's batch header (created empty if
+ * no order has landed yet today; checkout/dashboard already do this). */
+export type CurrentBatch = {
+  batch_id: number
+  order_date: string
+  delivery_date: string
+  cutoff_policy: string
+  status: "open" | "closed"
 }
 
 export type RunRow = {
@@ -205,6 +216,7 @@ export const adminApi = {
       { order_ids: orderIds, status, note },
     ),
   batches: () => api.get<{ batches: BatchRow[] }>("/v1/admin/batches"),
+  currentBatch: () => api.get<CurrentBatch>("/v1/admin/batches/current"),
   batch: (id: number) => api.get<BatchDetail>(`/v1/admin/batches/${id}`),
   closeBatch: (id: number) => api.post(`/v1/admin/batches/${id}/close`),
   batchLabelsUrl: (id: number) => `${API_BASE_URL}/v1/admin/batches/${id}/labels`,

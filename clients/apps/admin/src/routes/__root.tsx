@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   BarChart3,
   Bike,
+  ChefHat,
   ChevronDown,
   ClipboardList,
   LayoutDashboard,
@@ -64,6 +65,7 @@ import { NotificationBanner } from "../components/notification-banner";
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/orders", label: "Orders", icon: ClipboardList },
+  { to: "/production", label: "Production sheet", icon: ChefHat },
   { to: "/users", label: "Customers", icon: Users },
   { to: "/batches", label: "Batches", icon: Package },
   { to: "/runs", label: "Delivery runs", icon: Bike },
@@ -205,7 +207,7 @@ function AdminShell() {
         {/* Mobile header: on <md the sidebar collapses into a Sheet drawer
             opened by this trigger. Desktop keeps the full sidebar (plus the
             hover rail / Ctrl-B shortcut to slide it away). */}
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-3 md:hidden">
+        <header className="no-print sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-3 md:hidden">
           <SidebarTrigger />
           <p className="text-sm font-semibold text-neutral-900">
             AR Operations

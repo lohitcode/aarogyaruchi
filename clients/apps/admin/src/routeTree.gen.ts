@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ProductionRouteImport } from './routes/production'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as ManageRouteImport } from './routes/manage'
 import { Route as LiveRouteImport } from './routes/live'
@@ -22,6 +23,11 @@ import { Route as UsersIdRouteImport } from './routes/users.$id'
 import { Route as RunsIdRouteImport } from './routes/runs.$id'
 import { Route as BatchesIdRouteImport } from './routes/batches.$id'
 
+const ProductionRoute = ProductionRouteImport.update({
+  id: '/production',
+  path: '/production',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrdersRoute = OrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
@@ -90,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/live': typeof LiveRoute
   '/manage': typeof ManageRoute
   '/orders': typeof OrdersRoute
+  '/production': typeof ProductionRoute
   '/batches/$id': typeof BatchesIdRoute
   '/runs/$id': typeof RunsIdRoute
   '/users/$id': typeof UsersIdRoute
@@ -104,6 +111,7 @@ export interface FileRoutesByTo {
   '/live': typeof LiveRoute
   '/manage': typeof ManageRoute
   '/orders': typeof OrdersRoute
+  '/production': typeof ProductionRoute
   '/batches/$id': typeof BatchesIdRoute
   '/runs/$id': typeof RunsIdRoute
   '/users/$id': typeof UsersIdRoute
@@ -119,6 +127,7 @@ export interface FileRoutesById {
   '/live': typeof LiveRoute
   '/manage': typeof ManageRoute
   '/orders': typeof OrdersRoute
+  '/production': typeof ProductionRoute
   '/batches/$id': typeof BatchesIdRoute
   '/runs/$id': typeof RunsIdRoute
   '/users/$id': typeof UsersIdRoute
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/live'
     | '/manage'
     | '/orders'
+    | '/production'
     | '/batches/$id'
     | '/runs/$id'
     | '/users/$id'
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/live'
     | '/manage'
     | '/orders'
+    | '/production'
     | '/batches/$id'
     | '/runs/$id'
     | '/users/$id'
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
     | '/live'
     | '/manage'
     | '/orders'
+    | '/production'
     | '/batches/$id'
     | '/runs/$id'
     | '/users/$id'
@@ -178,6 +190,7 @@ export interface RootRouteChildren {
   LiveRoute: typeof LiveRoute
   ManageRoute: typeof ManageRoute
   OrdersRoute: typeof OrdersRoute
+  ProductionRoute: typeof ProductionRoute
   BatchesIdRoute: typeof BatchesIdRoute
   RunsIdRoute: typeof RunsIdRoute
   UsersIdRoute: typeof UsersIdRoute
@@ -188,6 +201,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/production': {
+      id: '/production'
+      path: '/production'
+      fullPath: '/production'
+      preLoaderRoute: typeof ProductionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/orders': {
       id: '/orders'
       path: '/orders'
@@ -282,6 +302,7 @@ const rootRouteChildren: RootRouteChildren = {
   LiveRoute: LiveRoute,
   ManageRoute: ManageRoute,
   OrdersRoute: OrdersRoute,
+  ProductionRoute: ProductionRoute,
   BatchesIdRoute: BatchesIdRoute,
   RunsIdRoute: RunsIdRoute,
   UsersIdRoute: UsersIdRoute,
