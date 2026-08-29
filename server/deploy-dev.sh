@@ -142,6 +142,8 @@ ingress:
     service: http://caddy:80
   - hostname: dev-cache.aarogyaruchi.com
     service: http://caddy:80
+  - hostname: dev-grafana.aarogyaruchi.com
+    service: http://caddy:80
   - service: http_status:404
 YML
 EOF
@@ -303,9 +305,12 @@ else
       -config.file=/etc/loki/local-config.yaml >/dev/null
     # Provisioned datasources carry the Grafana Cloud UIDs so the same
     # dashboard JSONs import unchanged (see grafana-datasources-dev.yml).
+    # allow_sign_up=false: the UI is reachable publicly via the tunnel
+    # (behind the caddy basic-auth gate) — no self-serve accounts.
     podman run -d --name grafana --network aarogya-dev --restart=always \
       --security-opt label=disable --memory=384m -p 3000:3000 \
       -e GF_SECURITY_ADMIN_PASSWORD="\$GADMINPW" \
+      -e GF_USERS_ALLOW_SIGN_UP=false \
       -v aarogya-dev-grafana-data:/var/lib/grafana \
       -v ./monitoring/grafana-datasources-dev.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro \
       docker.io/grafana/grafana:13.1.4 >/dev/null

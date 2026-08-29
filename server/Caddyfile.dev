@@ -16,3 +16,14 @@ http://dev-cache.aarogyaruchi.com {
 	}
 	reverse_proxy redis-commander:8081
 }
+
+# Self-hosted monitoring UI (grafana/prometheus/loki — see
+# docs/dev-selfhosted-monitoring.md). Same gate as the UIs above; behind
+# the basic auth sits Grafana's own admin login (password in sops
+# dev.env GRAFANA_ADMIN_PASSWORD).
+http://dev-grafana.aarogyaruchi.com {
+	basic_auth {
+		lohit $2a$14$qRGwospV9.fF1vuwvwAlRO3Hwaie4en1uMsiPWMbi26ZD1VVGNFE.
+	}
+	reverse_proxy grafana:3000
+}
