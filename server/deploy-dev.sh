@@ -142,7 +142,7 @@ ingress:
     service: http://caddy:80
   - hostname: dev-cache.aarogyaruchi.com
     service: http://caddy:80
-  - hostname: dev-grafana.aarogyaruchi.com
+  - hostname: dev-grafana.lohitcode.com
     service: http://caddy:80
   - service: http_status:404
 YML

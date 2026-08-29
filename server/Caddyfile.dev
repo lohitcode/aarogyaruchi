@@ -20,8 +20,9 @@ http://dev-cache.aarogyaruchi.com {
 # Self-hosted monitoring UI (grafana/prometheus/loki — see
 # docs/dev-selfhosted-monitoring.md). Same gate as the UIs above; behind
 # the basic auth sits Grafana's own admin login (password in sops
-# dev.env GRAFANA_ADMIN_PASSWORD).
-http://dev-grafana.aarogyaruchi.com {
+# dev.env GRAFANA_ADMIN_PASSWORD). Hosted on the lohitcode.com zone
+# (DNS auto-managed via `cloudflared tunnel route dns`, cert.pem).
+http://dev-grafana.lohitcode.com {
 	basic_auth {
 		lohit $2a$14$qRGwospV9.fF1vuwvwAlRO3Hwaie4en1uMsiPWMbi26ZD1VVGNFE.
 	}

@@ -9,8 +9,11 @@
 ;   dev-api    → Go API          (public by design; OTP/session auth)
 ;   dev-db     → Adminer         (basic auth, user lohit — same password
 ;   dev-cache  → redis-commander  as the prod db/cache UIs; Caddyfile.dev)
-;   dev-grafana → self-hosted monitoring Grafana (basic auth gate →
-;                Grafana admin login; docs/dev-selfhosted-monitoring.md)
+;
+; NOTE: dev-grafana (self-hosted monitoring) deliberately lives on the
+; lohitcode.com zone instead — dev-grafana.lohitcode.com, same tunnel,
+; DNS created via `cloudflared tunnel route dns` (cert.pem manages that
+; zone locally; this file only covers aarogyaruchi.com).
 ;
 ; Records MUST be proxied (orange cloud) — the tunnel only receives
 ; Cloudflare-edge traffic. Cloudflare imports CNAMEs as proxied by
@@ -28,4 +31,3 @@ $ORIGIN aarogyaruchi.com.
 dev-api     1 IN CNAME bb8db68b-9ab7-46cd-90a3-eeecd8f31acd.cfargotunnel.com.
 dev-db      1 IN CNAME bb8db68b-9ab7-46cd-90a3-eeecd8f31acd.cfargotunnel.com.
 dev-cache   1 IN CNAME bb8db68b-9ab7-46cd-90a3-eeecd8f31acd.cfargotunnel.com.
-dev-grafana 1 IN CNAME bb8db68b-9ab7-46cd-90a3-eeecd8f31acd.cfargotunnel.com.

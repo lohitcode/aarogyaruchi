@@ -56,13 +56,21 @@ systemctl --user enable --now podman.socket      # API socket alloy needs
 │      ▼                      ▼                        │
 │   alloy ── remote_write ──▶ prometheus (90d)        │
 │        └─ loki write ─────▶ loki (30d)              │
-│                              grafana :3000 (LAN)    │
+│                              grafana :3000          │
 └─────────────────────────────────────────────────────┘
- cloudflared tunnel: dev-api.aarogyaruchi.com/metrics → 404
+ LAN 192.168.0.8:3000 · public: dev-grafana.lohitcode.com
+   (Cloudflare → tunnel bb8db68b → caddy basic auth → grafana login)
+ cloudflared tunnel: dev-api *./metrics → 404 (public leak fix)
 ```
 
-- Grafana is **LAN-only** (192.168.0.8:3000) — deliberately not on the
-  tunnel. Datasources are provisioned with the **same UIDs as Grafana
+- Grafana is reachable on the **LAN** (`192.168.0.8:3000`) and publicly at
+  **`https://dev-grafana.lohitcode.com`** — routed through the caddy
+  basic-auth gate (same `lohit` credential as dev-db/dev-cache), then
+  Grafana's own admin login. Self-signup disabled. The hostname lives on
+  the lohitcode.com zone because that DNS is auto-managed locally
+  (`cloudflared tunnel route dns bb8db68b dev-grafana.lohitcode.com`);
+  aarogyaruchi.com records need manual dashboard edits.
+- Datasources are provisioned with the **same UIDs as Grafana
   Cloud** (`grafanacloud-prom` / `grafanacloud-logs`), so the same
   dashboard JSONs import unchanged into both.
 - Files: `monitoring/config-dev.alloy`, `prometheus-dev.yml`,
@@ -110,8 +118,11 @@ prod's Caddy `handle /metrics` block). Verified: public 404, in-network 200.
 
 ## 7. Accessing the dev Grafana
 
-On the LAN: `http://192.168.0.8:3000` (admin / `GRAFANA_ADMIN_PASSWORD`
-in sops `dev.env`). Over the internet: `ssh -L` to the box — note sshd
-may refuse to connect onward to port 3000 under SELinux ("channel open
-failed"); if so, curl the APIs from on-box instead, or add 3000 to
-`semanage port -a -t http_port_t -p tcp 3000`.
+- **Public**: `https://dev-grafana.lohitcode.com` — caddy basic auth
+  first (`lohit` + the shared UI password), then Grafana's own login
+  (`admin` / `GRAFANA_ADMIN_PASSWORD` in sops `dev.env`).
+- **LAN**: `http://192.168.0.8:3000` (straight to the Grafana login).
+- CLI/API: on-box `curl -u admin:… localhost:3000` — note sshd's own
+  port-forwarding to :3000 is blocked by SELinux ("channel open
+  failed"); tunneling in from a laptop doesn't work, call the APIs from
+  the box or `semanage port -a -t http_port_t -p tcp 3000`.
