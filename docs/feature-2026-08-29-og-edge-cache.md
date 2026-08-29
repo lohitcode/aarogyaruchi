@@ -101,15 +101,19 @@ derivable.
 - `wrangler.jsonc`: `kv_namespaces` binding `OG_CATALOG`
   (`make-dev-wrangler.mjs` strips it for dev — dev keeps snapshot-only
   behavior and must not read prod previews).
-- `src/server.ts` + **the gotcha**: a custom worker entry threads
+- `src/server.ts` + **the entry gotcha**: a custom worker entry threads
   `env` through `{ context: { env } }` so loaders reach it as
-  `serverContext.env` during SSR. But the TanStack plugin's entry alias
-  (`virtual:tanstack-start-server-entry`) only applies to TanStack's own
-  environment wiring — the wrangler `main` specifier
-  `@tanstack/react-start/server-entry` resolves **directly to the package's
-  passthrough default entry** and silently ignores `src/server.ts`. Fix:
-  a `resolve.alias` entry in `vite.config.ts` mapping that exact specifier
-  to `src/server.ts`. Symptom before the fix: `serverContext` arrived empty.
+  `serverContext.env` during SSR. Under `@cloudflare/vite-plugin` the
+  wrangler `main` field is **authoritative by design**: the plugin wraps it
+  in a virtual worker entry that literally does
+  `import * as mod from <main>; export default mod.default`. TanStack's
+  `src/server.ts` convention is honored only if `main` points at it —
+  TanStack's documented specifier `@tanstack/react-start/server-entry`
+  resolves to the package's passthrough default entry and **silently
+  bypasses** `src/server.ts` (reordering the plugins can't fix this; the
+  virtual entry always wins). So `wrangler.jsonc` carries
+  `"main": "./src/server.ts"`. Symptom when it was wrong:
+  `serverContext` arrived empty in loaders.
 - `$slug` loader returns `og` (normalized KV payload) in loaderData;
   `head()` uses `loaderData.og ?? snapshot ?? site card`. Client-side
   navigations (no serverContext) use the snapshot — irrelevant to crawlers,

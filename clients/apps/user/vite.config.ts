@@ -10,13 +10,6 @@ const config = defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      // Our custom worker entry (src/server.ts threads the Cloudflare env
-      // into the SSR request context so loaders can read KV bindings).
-      // Without this the wrangler main specifier resolves to the package's
-      // passthrough default entry, which drops `env`.
-      '@tanstack/react-start/server-entry': fileURLToPath(
-        new URL('./src/server.ts', import.meta.url),
-      ),
     },
   },
   plugins: [

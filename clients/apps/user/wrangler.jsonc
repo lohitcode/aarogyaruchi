@@ -3,7 +3,13 @@
   "name": "aarogyaruchi-user",
   "compatibility_date": "2025-01-26",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "@tanstack/react-start/server-entry",
+  // Our own worker entry (threads the Cloudflare env into the SSR request
+  // context so loaders can read KV bindings). NOTE: under
+  // @cloudflare/vite-plugin this field is authoritative — the plugin's
+  // virtual worker entry literally re-exports `main` — so TanStack's
+  // documented `@tanstack/react-start/server-entry` specifier would
+  // silently bypass src/server.ts (see docs/feature-2026-08-29-og-edge-cache.md).
+  "main": "./src/server.ts",
   // Link-preview (Open Graph) metadata, key = product slug. Written by the
   // images-cdn worker's /og/* endpoint on every product mutation (see
   // server/internal/cfkv); read during SSR by the $slug route's loader with
