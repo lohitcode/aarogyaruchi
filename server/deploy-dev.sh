@@ -270,15 +270,14 @@ else
     GADMINPW=\$(grep '^GRAFANA_ADMIN_PASSWORD=' .env | cut -d= -f2-)
 
     # Rootless podman cannot bind the host root filesystem; /proc alone
-    # still covers cpu/mem/load (host values) — the collectors that need
-    # /sys log warnings and self-disable.
+    # still covers cpu/mem/load (host values). Collectors needing /sys
+    # report node_scrape_collector_success=0 and stay noisy-but-harmless
+    # (v1.12 has no global --collector.disable-default-collectors flag).
     podman run -d --name node-exporter --network aarogya-dev --restart=always \
       --security-opt label=disable --memory=64m \
       -v /proc:/host/proc:ro \
       quay.io/prometheus/node-exporter:v1.12.1 \
-      --path.procfs=/host/proc --collector.disable-default-collectors \
-      --collector.cpu --collector.meminfo --collector.loadavg \
-      --collector.filesystem --collector.netdev >/dev/null
+      --path.procfs=/host/proc >/dev/null
 
     podman run -d --name postgres-exporter --network aarogya-dev --restart=always \
       --memory=96m \

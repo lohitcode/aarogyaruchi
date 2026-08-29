@@ -236,6 +236,14 @@ cd server && ./deploy-dev.sh --reset-db  # wipe dev DB + cache volumes
   cloudflared cert only manages lohitcode.com DNS.
 - Dev image uploads share the prod R2 bucket via images-cdn — test
   images only. Never run the proxy profile / prod Caddyfile on this box.
+- **Dev runs a SELF-HOSTED monitoring stack** (grafana/prometheus/loki/
+  alloy + 3 exporters, all podman, LAN grafana on :3000) — see
+  docs/dev-selfhosted-monitoring.md. `deploy-dev.sh` also enables linger
+  + podman-restart on every deploy so the stack survives reboots (a
+  reboot once left dev down 39h unnoticed). Dev API has
+  `METRICS_ENABLED=true`; the tunnel 404s `/metrics` publicly. The
+  Grafana Cloud `monitoring` profile stays PROD-ONLY — never add
+  GRAFANA_CLOUD_* keys to `secrets/dev.env`.
 
 ### Public hostnames (Caddy)
 - `api.aarogyaruchi.com` → Go API (REST + WS)
