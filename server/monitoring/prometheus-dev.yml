@@ -1,0 +1,12 @@
+# Prometheus (dev box, self-hosted) — samples arrive via remote_write from
+# Alloy (config-dev.alloy); this file only starts the receiver and scrapes
+# Prometheus itself for meta-health. 90-day retention set on the CLI in
+# deploy-dev.sh. No published port; compose-network only.
+global:
+  scrape_interval: 60s
+  evaluation_interval: 60s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

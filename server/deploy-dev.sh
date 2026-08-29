@@ -11,10 +11,9 @@ set -e
 #
 #   - CPU arch auto-detected from the box (amd64 or arm64).
 #   - Container engine auto-detected: docker if usable (post-bootstrap),
-#     else rootless podman (no sudo needed; containers survive ssh logout
-#     on this box, but after a REBOOT re-run this script — or `podman start
-#     postgres valkey server tunnel` — since rootless restart policies do
-#     not fire pre-login).
+#     else rootless podman (no sudo needed). Reboot survival (linger +
+#     podman-restart + podman.socket) is enabled on every podman-path
+#     deploy — containers with --restart=always come back on their own.
 #   - Deploy dir is ~/aarogya-dev (no root-owned /app).
 #   - ONLY the API stack runs: NO Caddy/Adminer/redis-commander — the prod
 #     Caddyfile would request TLS certs for hostnames that point at the
@@ -79,6 +78,12 @@ docker save aarogya-server | gzip > /tmp/aarogya-server.tar.gz
 echo "==> Copying files to dev box..."
 scp -q /tmp/aarogya-server.tar.gz $SERVER:/tmp/
 scp -q docker-compose.yml Caddyfile.dev $SERVER:$DIR/
+# Self-hosted monitoring stack configs (dev box is beefy; prod stays on
+# Grafana Cloud because its 2 GB VPS can't afford the stack locally).
+ssh $SERVER "mkdir -p $DIR/monitoring"
+scp -q monitoring/config-dev.alloy monitoring/prometheus-dev.yml \
+    monitoring/loki-dev.yml monitoring/grafana-datasources-dev.yml \
+    $SERVER:$DIR/monitoring/
 
 if [ "$1" = "--reset-db" ]; then
   echo "==> --reset-db: wiping dev database and cache volumes..."
@@ -121,8 +126,16 @@ ssh $SERVER << EOF
 tunnel: $TUNNEL_ID
 credentials-file: /etc/cloudflared/creds.json
 ingress:
+  # METRICS_ENABLED exposes /metrics on the API; keep it off the public
+  # internet (same reason Caddy 404s it in prod) — Alloy scrapes in-network.
+  - hostname: $DEV_API_HOST
+    path: ^/metrics(\/.*)?\$
+    service: http_status:404
   - hostname: $DEV_API_HOST
     service: http://server:8080
+  - hostname: $DEV_API_ALIAS
+    path: ^/metrics(\/.*)?\$
+    service: http_status:404
   - hostname: $DEV_API_ALIAS
     service: http://server:8080
   - hostname: dev-db.aarogyaruchi.com
@@ -135,6 +148,10 @@ EOF
 
 echo "==> Deploying on dev box (engine: $ENGINE)..."
 if [ "$ENGINE" = "docker" ]; then
+  # NOTE: the docker path is a bootstrap fallback and does NOT deploy the
+  # self-hosted monitoring stack — the box reality is rootless podman
+  # (verified 2026-08-29: no docker installed). Monitoring containers live
+  # in the podman path below.
   ssh $SERVER << EOF
     set -e
     cd $DIR
@@ -185,7 +202,8 @@ else
     rm -f /tmp/aarogya-server.tar.gz
 
     echo "==> Recreating containers (volumes persist)..."
-    podman rm -f server tunnel caddy adminer redis-commander postgres valkey >/dev/null 2>&1 || true
+    podman rm -f server tunnel caddy adminer redis-commander postgres valkey \
+      node-exporter postgres-exporter redis-exporter prometheus loki grafana alloy >/dev/null 2>&1 || true
     podman network create aarogya-dev >/dev/null 2>&1 || true
     podman volume create aarogya-dev-pg-data >/dev/null 2>&1 || true
     podman volume create aarogya-dev-valkey-data >/dev/null 2>&1 || true
@@ -241,6 +259,76 @@ else
       docker.io/cloudflare/cloudflared:latest \
       tunnel --no-autoupdate run >/dev/null
 
+    # ---- Self-hosted monitoring (dev-only; prod = Grafana Cloud). All
+    # local, no credentials, nothing egresses. podman.socket powers the
+    # docker-compatible API socket alloy tails logs through.
+    systemctl --user enable --now podman.socket >/dev/null 2>&1 || true
+    podman volume create aarogya-dev-prom-data >/dev/null 2>&1 || true
+    podman volume create aarogya-dev-loki-data >/dev/null 2>&1 || true
+    podman volume create aarogya-dev-grafana-data >/dev/null 2>&1 || true
+    podman volume create aarogya-dev-alloy-data >/dev/null 2>&1 || true
+    GADMINPW=\$(grep '^GRAFANA_ADMIN_PASSWORD=' .env | cut -d= -f2-)
+
+    # Rootless podman cannot bind the host root filesystem; /proc alone
+    # still covers cpu/mem/load (host values) — the collectors that need
+    # /sys log warnings and self-disable.
+    podman run -d --name node-exporter --network aarogya-dev --restart=always \
+      --security-opt label=disable --memory=64m \
+      -v /proc:/host/proc:ro \
+      quay.io/prometheus/node-exporter:v1.12.1 \
+      --path.procfs=/host/proc --collector.disable-default-collectors \
+      --collector.cpu --collector.meminfo --collector.loadavg \
+      --collector.filesystem --collector.netdev >/dev/null
+
+    podman run -d --name postgres-exporter --network aarogya-dev --restart=always \
+      --memory=96m \
+      -e DATA_SOURCE_NAME="postgresql://aarogya:\$PGPW@postgres:5432/aarogya_ruchi?sslmode=disable" \
+      quay.io/prometheuscommunity/postgres-exporter:v0.20.1 >/dev/null
+    podman run -d --name redis-exporter --network aarogya-dev --restart=always \
+      --memory=64m \
+      -e REDIS_ADDR="redis://valkey:6379" -e REDIS_PASSWORD="\$VKPW" \
+      docker.io/oliver006/redis_exporter:v1.90.0 >/dev/null
+
+    podman run -d --name prometheus --network aarogya-dev --restart=always \
+      --security-opt label=disable --memory=512m \
+      -v aarogya-dev-prom-data:/prometheus \
+      -v ./monitoring/prometheus-dev.yml:/etc/prometheus/prometheus.yml:ro \
+      docker.io/prom/prometheus:v3.14.0 \
+      --web.enable-remote-write-receiver --storage.tsdb.retention.time=90d \
+      --config.file=/etc/prometheus/prometheus.yml >/dev/null
+    podman run -d --name loki --network aarogya-dev --restart=always \
+      --security-opt label=disable --memory=512m \
+      -v aarogya-dev-loki-data:/loki \
+      -v ./monitoring/loki-dev.yml:/etc/loki/local-config.yaml:ro \
+      docker.io/grafana/loki:3.7.7 \
+      -config.file=/etc/loki/local-config.yaml >/dev/null
+    # Provisioned datasources carry the Grafana Cloud UIDs so the same
+    # dashboard JSONs import unchanged (see grafana-datasources-dev.yml).
+    podman run -d --name grafana --network aarogya-dev --restart=always \
+      --security-opt label=disable --memory=384m -p 3000:3000 \
+      -e GF_SECURITY_ADMIN_PASSWORD="\$GADMINPW" \
+      -v aarogya-dev-grafana-data:/var/lib/grafana \
+      -v ./monitoring/grafana-datasources-dev.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro \
+      docker.io/grafana/grafana:13.1.4 >/dev/null
+    podman run -d --name alloy --network aarogya-dev --restart=always \
+      --security-opt label=disable --memory=320m \
+      -v ./monitoring/config-dev.alloy:/etc/alloy/config.alloy:ro \
+      -v /run/user/\$(id -u)/podman/podman.sock:/var/run/docker.sock:ro \
+      -v aarogya-dev-alloy-data:/var/lib/alloy/data \
+      docker.io/grafana/alloy:v1.19.2 \
+      run --server.http.listen-addr=0.0.0.0:12345 \
+      --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy >/dev/null
+
+    # Reboot survival — the 2026-08-29 incident: the box rebooted and the
+    # whole stack stayed down for 39h because rootless containers have no
+    # boot-time start without these. Idempotent on every deploy.
+    #   linger: user manager runs before login → restart policies fire
+    #   podman-restart: restarts --restart=always containers at boot
+    loginctl enable-linger >/dev/null 2>&1 \
+      || loginctl enable-linger \$USER >/dev/null 2>&1 \
+      || echo "    (warn: could not enable linger — reboots will still stop the stack)"
+    systemctl --user enable podman-restart.service >/dev/null 2>&1 || true
+
     echo "==> Deployment complete!"
     podman ps --format "{{.Names}}  {{.Status}}"
 EOF
@@ -250,6 +338,10 @@ rm -f /tmp/aarogya-server.tar.gz
 
 echo "==> Verifying health..."
 ssh $SERVER "for i in \$(seq 1 20); do curl -sf localhost:8080/health >/dev/null 2>&1 && break; sleep 1; done; curl -s -o /dev/null -w 'local:  HTTP %{http_code}\n' localhost:8080/health"
+if [ "$ENGINE" = "podman" ]; then
+  echo "==> Monitoring stack:"
+  ssh $SERVER "sleep 5; podman ps --format '{{.Names}}  {{.Status}}' | grep -E 'prometheus|loki|grafana|alloy|exporter' || echo '    (not started)'"
+fi
 # The alias always works; DEV_API_HOST needs its DNS CNAME to exist
 # (aarogyaruchi.com zone — manual dashboard record, see README).
 wait_public() {

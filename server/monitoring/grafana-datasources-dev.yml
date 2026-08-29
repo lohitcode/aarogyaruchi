@@ -1,0 +1,21 @@
+# Grafana datasource provisioning (dev box). The UIDs deliberately MATCH
+# the Grafana Cloud stack's ("grafanacloud-prom" / "grafanacloud-logs") so
+# the same dashboard JSONs import unchanged on both.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus (dev, self-hosted)
+    uid: grafanacloud-prom
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      httpMethod: POST
+      timeInterval: 15s
+
+  - name: Loki (dev, self-hosted)
+    uid: grafanacloud-logs
+    type: loki
+    access: proxy
+    url: http://loki:3100
