@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 	"time"
 
 	"aarogyaruchi/internal/batch"
 	"aarogyaruchi/internal/cache"
+	"aarogyaruchi/internal/cfkv"
 	"aarogyaruchi/internal/chatbot"
 	"aarogyaruchi/internal/config"
 	"aarogyaruchi/internal/db/sqlc"
@@ -35,9 +37,10 @@ type Handler struct {
 	config   *config.Config
 	chat     *chatbot.Service
 	push     *webpush.Sender
+	cfkv     *cfkv.Syncer
 }
 
-func New(db *pgxpool.Pool, cache *cache.Cache, otpService *otp.Service, tokens *token.Manager, sessions *session.Store, hub *websocket.Hub, cfg *config.Config, chat *chatbot.Service, push *webpush.Sender) *Handler {
+func New(db *pgxpool.Pool, cache *cache.Cache, otpService *otp.Service, tokens *token.Manager, sessions *session.Store, hub *websocket.Hub, cfg *config.Config, chat *chatbot.Service, push *webpush.Sender, ogSync *cfkv.Syncer) *Handler {
 	return &Handler{
 		db:       db,
 		cache:    cache,
@@ -49,6 +52,7 @@ func New(db *pgxpool.Pool, cache *cache.Cache, otpService *otp.Service, tokens *
 		config:   cfg,
 		chat:     chat,
 		push:     push,
+		cfkv:     ogSync,
 	}
 }
 
@@ -65,6 +69,34 @@ func (h *Handler) withTx(ctx context.Context, fn func(q *sqlc.Queries) error) er
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+// syncOgCatalog refreshes the link-preview KV entries for the given slugs in
+// the background after a product mutation has committed. Best-effort by
+// design: a missed sync only means the site worker keeps serving the
+// previous entry or the build-time snapshot. The goroutine must not use
+// r.Context() — it is canceled the moment the handler returns — hence the
+// detached context with its own deadline.
+func (h *Handler) syncOgCatalog(slugs ...string) {
+	if h.cfkv == nil || !h.cfkv.Enabled() {
+		return
+	}
+	pending := make([]string, 0, len(slugs))
+	for _, slug := range slugs {
+		if slug != "" && !slices.Contains(pending, slug) {
+			pending = append(pending, slug)
+		}
+	}
+	if len(pending) == 0 {
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		for _, slug := range pending {
+			h.cfkv.SyncProduct(ctx, h.queries, slug)
+		}
+	}()
 }
 
 // Health check endpoint - simple 200 OK for load balancers

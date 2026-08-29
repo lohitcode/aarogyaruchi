@@ -29,10 +29,10 @@ export const OG_CATALOG: Record<string, OgProduct> = {
     "imageHeight": 624,
     "minPricePaise": 5000
   },
-  "ragi-malt-salted": {
-    "name": "Ragi Malt (Salted)",
-    "description": "Savory version of the traditional ragi malt. Perfect for those who prefer less sweet.",
-    "image": "/og/ragi-malt-salted.jpg",
+  "green-gram-sprouts": {
+    "name": "Green Gram Sprouts",
+    "description": "Pesalu sprouts - protein-rich green gram sprouts. Traditional Andhra healthy snack.",
+    "image": "/og/sprouts.jpg",
     "imageWidth": 800,
     "imageHeight": 624,
     "minPricePaise": 5000
@@ -45,10 +45,26 @@ export const OG_CATALOG: Record<string, OgProduct> = {
     "imageHeight": 624,
     "minPricePaise": 5000
   },
-  "green-gram-sprouts": {
-    "name": "Green Gram Sprouts",
-    "description": "Pesalu sprouts - protein-rich green gram sprouts. Traditional Andhra healthy snack.",
+  "ragi-malt-salted": {
+    "name": "Ragi Malt (Salted)",
+    "description": "Savory version of the traditional ragi malt. Perfect for those who prefer less sweet.",
+    "image": "/og/ragi-malt-salted.jpg",
+    "imageWidth": 800,
+    "imageHeight": 624,
+    "minPricePaise": 5000
+  },
+  "sprout-salad": {
+    "name": "Sprout Salad",
+    "description": "Fresh sprout mix with onions, tomatoes, cucumber, lemon, and spices. Healthy chaat-style salad.",
     "image": "/og/sprouts.jpg",
+    "imageWidth": 800,
+    "imageHeight": 624,
+    "minPricePaise": 6000
+  },
+  "mosambi-juice": {
+    "name": "Mosambi Juice",
+    "description": "Sweet lime juice with a hint of salt. Hydrating and refreshing citrus drink.",
+    "image": "/og/mosambi-juice.jpg",
     "imageWidth": 800,
     "imageHeight": 624,
     "minPricePaise": 5000
@@ -68,21 +84,5 @@ export const OG_CATALOG: Record<string, OgProduct> = {
     "imageWidth": 800,
     "imageHeight": 624,
     "minPricePaise": 5000
-  },
-  "mosambi-juice": {
-    "name": "Mosambi Juice",
-    "description": "Sweet lime juice with a hint of salt. Hydrating and refreshing citrus drink.",
-    "image": "/og/mosambi-juice.jpg",
-    "imageWidth": 800,
-    "imageHeight": 624,
-    "minPricePaise": 5000
-  },
-  "sprout-salad": {
-    "name": "Sprout Salad",
-    "description": "Fresh sprout mix with onions, tomatoes, cucumber, lemon, and spices. Healthy chaat-style salad.",
-    "image": "/og/sprouts.jpg",
-    "imageWidth": 800,
-    "imageHeight": 624,
-    "minPricePaise": 6000
   }
 }

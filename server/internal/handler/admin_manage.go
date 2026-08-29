@@ -167,6 +167,7 @@ func (h *Handler) AdminCreateProduct(w http.ResponseWriter, r *http.Request) {
 		h.Error(w, http.StatusConflict, "slug already in use or invalid variants")
 		return
 	}
+	h.syncOgCatalog(base)
 	h.writeAdminProduct(w, http.StatusCreated, r, created.ID)
 }
 
@@ -244,7 +245,12 @@ func (h *Handler) AdminUpdateProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	base := req.baseSlug()
+	var oldSlug string
 	err = h.withTx(r.Context(), func(q *sqlc.Queries) error {
+		if previous, err := q.AdminGetProduct(r.Context(), productID); err == nil {
+			// Captured pre-update so a slug rename can evict the old key.
+			oldSlug = previous.Slug
+		}
 		if _, err := q.AdminUpdateProduct(r.Context(), sqlc.AdminUpdateProductParams{
 			ID:          productID,
 			Slug:        base,
@@ -308,6 +314,7 @@ func (h *Handler) AdminUpdateProduct(w http.ResponseWriter, r *http.Request) {
 		h.Error(w, http.StatusConflict, "slug already in use or invalid variants")
 		return
 	}
+	h.syncOgCatalog(oldSlug, base)
 	h.writeAdminProduct(w, http.StatusOK, r, productID)
 }
 
@@ -319,7 +326,12 @@ func (h *Handler) AdminArchiveProduct(w http.ResponseWriter, r *http.Request) {
 		h.Error(w, http.StatusBadRequest, "invalid product id")
 		return
 	}
+	var slug string
 	err = h.withTx(r.Context(), func(q *sqlc.Queries) error {
+		// Slug captured before the archive so the preview entry can be evicted.
+		if product, err := q.AdminGetProduct(r.Context(), productID); err == nil {
+			slug = product.Slug
+		}
 		rows, err := q.AdminArchiveProduct(r.Context(), productID)
 		if err != nil {
 			return err
@@ -337,6 +349,7 @@ func (h *Handler) AdminArchiveProduct(w http.ResponseWriter, r *http.Request) {
 		h.Error(w, http.StatusInternalServerError, "failed to archive product")
 		return
 	}
+	h.syncOgCatalog(slug)
 	h.JSON(w, http.StatusOK, map[string]string{"message": "archived"})
 }
 
@@ -352,11 +365,13 @@ func (h *Handler) AdminDeleteProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var ordered int64
+	var deletedSlug string
 	err = h.withTx(r.Context(), func(q *sqlc.Queries) error {
 		product, err := q.AdminGetProduct(r.Context(), productID)
 		if err != nil {
 			return errNotFound
 		}
+		deletedSlug = product.Slug
 		if !product.ArchivedAt.Valid {
 			return errNotArchived
 		}
@@ -396,6 +411,7 @@ func (h *Handler) AdminDeleteProduct(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	h.syncOgCatalog(deletedSlug)
 	h.JSON(w, http.StatusOK, map[string]string{"message": "deleted"})
 }
 

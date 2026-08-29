@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"aarogyaruchi/internal/cache"
+	"aarogyaruchi/internal/cfkv"
 	"aarogyaruchi/internal/chatbot"
 	"aarogyaruchi/internal/config"
 	"aarogyaruchi/internal/db"
@@ -100,8 +101,14 @@ func main() {
 		log.Println("chatbot: ZAI_API_KEY not set, /chat/stream will return provider errors")
 	}
 
+	// Link-preview KV sync (through the images-cdn worker, no CF credentials)
+	ogSync := cfkv.New(cfg.ImagesCDNBase, cfg.R2UploadSecret)
+	if !ogSync.Enabled() {
+		log.Println("cfkv: IMAGES_CDN_BASE/R2_UPLOAD_SECRET not set, preview sync disabled")
+	}
+
 	// Create handler and router
-	h := handler.New(pool, c, otpService, tokens, sessions, hub, cfg, chatService, pushSender)
+	h := handler.New(pool, c, otpService, tokens, sessions, hub, cfg, chatService, pushSender, ogSync)
 
 	// Seed privileged accounts from private env config (idempotent).
 	h.SeedPrivilegedAccounts(ctx)

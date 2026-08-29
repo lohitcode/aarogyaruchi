@@ -5,11 +5,12 @@ import { ProductDetailsTabs } from "../../components/product-detail/product-deta
 import { SimilarProducts } from "../../components/product-detail/similar-products"
 import type { Product } from "../../lib/api"
 import { fetchCatalog, useCatalogRecovery } from "../../lib/catalog"
-import { ogMetaForProduct } from "../../lib/og"
+import { ogMetaForProduct, normalizeOgEntry, type OgProductLike } from "../../lib/og"
 import { useMessages } from "../../i18n"
 
 export const Route = createFileRoute("/products/$slug")({
-  loader: async ({ params }) => {
+  loader: async (opts) => {
+    const { params } = opts
     // One catalog fetch resolves both the product and the similar-products
     // list; loader data hydrates the client so the page renders identically
     // to SSR. Only a RESOLVED catalog may answer not-found — an unreachable
@@ -23,18 +24,43 @@ export const Route = createFileRoute("/products/$slug")({
     }
     const product = products?.find((p) => p.slug === params.slug) ?? null
     if (products && !product) throw notFound()
-    return { product, products: products ?? [], catalogFailed: products === null }
+    return {
+      product,
+      products: products ?? [],
+      catalogFailed: products === null,
+      og: await readLiveOgEntry(opts, params.slug),
+    }
   },
   component: ProductDetailPage,
   notFoundComponent: () => <ProductNotFound />,
-  // Per-product link previews resolve from the build-time snapshot — no
-  // request-time fetch (see lib/og.ts), so previews render even while the
-  // page itself is recovering its live data in the browser.
+  // Per-product link previews prefer the live KV entry (refreshed on every
+  // product mutation — no rebuild) and fall back to the build-time snapshot,
+  // so tags render even while the page itself is recovering its live data in
+  // the browser.
   // NOTE: keep head AFTER loader — declared earlier it trips circular type
   // inference and collapses the loader's return type to `never`
   // (TanStack/router#4740).
-  head: ({ params }) => ({ meta: ogMetaForProduct(params.slug) }),
+  head: ({ params, loaderData }) => ({
+    meta: ogMetaForProduct(params.slug, loaderData?.og),
+  }),
 })
+
+// The OG_CATALOG KV binding only exists in the worker (serverContext.env is
+// threaded by src/server.ts during SSR); client navigations and local dev
+// return null and the build-time snapshot answers instead.
+async function readLiveOgEntry(
+  opts: { serverContext?: { env?: Env } },
+  slug: string,
+): Promise<OgProductLike | null> {
+  console.log("[og-debug] serverContext:", JSON.stringify(Object.keys((opts as Record<string, unknown>).serverContext ?? {})), "env:", !!opts.serverContext?.env)
+  const namespace = opts.serverContext?.env?.OG_CATALOG
+  if (!namespace) return null
+  try {
+    return normalizeOgEntry(await namespace.get(slug, "json"))
+  } catch {
+    return null
+  }
+}
 
 function ProductNotFound() {
   const t = useMessages()

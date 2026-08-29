@@ -7,7 +7,37 @@ import { api } from "../../lib/api"
  * browser streams the file straight to the images-cdn worker, which stores
  * it in the R2 bucket. The returned CDN URL is what gets saved on the
  * product.
+ *
+ * The token also carries an og_upload_url for the link-preview variant — a
+ * canvas-resized ~90 KB JPEG (WhatsApp drops preview images over ~300 KB)
+ * stored by the worker next to the original at <stem>.og.jpg, which keeps
+ * the variant URL derivable for the API's preview-metadata sync.
  */
+
+const OG_MAX_EDGE = 800
+const OG_JPEG_QUALITY = 0.72
+
+async function ogVariantBlob(file: File): Promise<Blob | null> {
+  try {
+    const bitmap = await createImageBitmap(file)
+    const scale = Math.min(1, OG_MAX_EDGE / Math.max(bitmap.width, bitmap.height))
+    const width = Math.max(1, Math.round(bitmap.width * scale))
+    const height = Math.max(1, Math.round(bitmap.height * scale))
+    const canvas = document.createElement("canvas")
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return null
+    ctx.drawImage(bitmap, 0, 0, width, height)
+    bitmap.close()
+    return await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", OG_JPEG_QUALITY),
+    )
+  } catch {
+    return null
+  }
+}
+
 export function ImageUpload({
   value,
   onChange,
@@ -32,7 +62,10 @@ export function ImageUpload({
     setBusy(true)
     setError("")
     try {
-      const token = await api.post<{ upload_url: string }>("/v1/admin/uploads/image")
+      const token = await api.post<{
+        upload_url: string
+        og_upload_url?: string
+      }>("/v1/admin/uploads/image")
       const res = await fetch(token.upload_url, {
         method: "PUT",
         headers: { "Content-Type": file.type },
@@ -44,6 +77,19 @@ export function ImageUpload({
       }
       const body = (await res.json()) as { url: string }
       onChange(body.url)
+
+      // Best-effort link-preview variant; failure only means the preview
+      // card serves the original image (or none) until a re-upload.
+      if (token.og_upload_url) {
+        const blob = await ogVariantBlob(file)
+        if (blob) {
+          await fetch(token.og_upload_url, {
+            method: "PUT",
+            headers: { "Content-Type": "image/jpeg" },
+            body: blob,
+          })
+        }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed")
     } finally {

@@ -21,6 +21,10 @@ generated.routes = dev.routes ?? [];
 delete generated.configPath;
 delete generated.userConfigPath;
 generated.workers_dev = dev.workers_dev ?? true;
+// Dev keeps no OG_CATALOG binding: the namespace holds the prod catalog's
+// link-preview entries, and dev's build-time snapshot (built against
+// dev-api) is the right fallback there.
+delete generated.kv_namespaces;
 
 writeFileSync("dist/server/wrangler.dev.json", JSON.stringify(generated, null, 2));
 console.log(`wrote dist/server/wrangler.dev.json (worker: ${dev.name}, workers.dev on, no routes)`);
