@@ -44,6 +44,16 @@ valkey_data/
 playwright-report/
 test-results/
 
+# AI agent local state (session transcripts, plans, per-machine settings)
+.zcode/
+.claude/
+
+# Local-only compose override (adds loopback ports for dev; never deployed)
+docker-compose.override.yml
+
+# Operator-local dev tunnel ID (never committed — see server/deploy-dev.sh)
+server/.dev-tunnel-id
+
 # Design reference screenshots (temporary, local-only)
 design-ref/
 

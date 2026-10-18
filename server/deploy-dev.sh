@@ -45,9 +45,23 @@ DEV_ADMIN_ORIGIN="https://dev-admin.aarogyaruchi.com"
 # locally-managed tunnels the edge load-balances across ALL connectors of
 # a tunnel regardless of per-connector ingress, so sharing the ssh tunnel
 # lands dev-api requests on the root connector's 404 catch-all.
-TUNNEL_ID="bb8db68b-9ab7-46cd-90a3-eeecd8f31acd"
+#
+# The ID is NOT committed (this repo is public). Resolution order:
+#   1. $DEV_TUNNEL_ID
+#   2. server/.dev-tunnel-id  (operator-local, gitignored)
+TUNNEL_ID="${DEV_TUNNEL_ID:-}"
 
 cd "$(dirname "$0")"   # server/ — go build, .env, tmp/ resolve from here
+
+if [ -z "$TUNNEL_ID" ] && [ -f .dev-tunnel-id ]; then
+  TUNNEL_ID=$(tr -d '[:space:]' < .dev-tunnel-id)
+fi
+if [ -z "$TUNNEL_ID" ]; then
+  echo "!! dev tunnel ID is unset. Export DEV_TUNNEL_ID=<uuid> or write the" >&2
+  echo "   uuid to server/.dev-tunnel-id (gitignored). Available credentials:" >&2
+  ls ~/.cloudflared/*.json 2>/dev/null | sed 's/^/     /' >&2
+  exit 1
+fi
 
 echo "==> Probing dev box (arch, engine, deploy dir)..."
 ARCH=$(ssh $SERVER 'uname -m')

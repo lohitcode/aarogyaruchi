@@ -160,7 +160,7 @@ image shipped over ssh) with dev differences:
 - Public URLs (all 3 services, prod parity): API
   `https://dev-api.aarogyaruchi.com`, Adminer `https://dev-db.aarogyaruchi.com`,
   redis-commander `https://dev-cache.aarogyaruchi.com` — dedicated tunnel
-  bb8db68b, container connector; `dev-api.lohitcode.com` alias. UIs are
+  <dev-tunnel-id>, container connector; `dev-api.lohitcode.com` alias. UIs are
   gated by a basic-auth caddy container (Caddyfile.dev — same user/pass
   as prod's db/cache UIs). Site: `https://dev.aarogyaruchi.com` (+workers.dev),
   `clients/apps/user && bun run deploy:dev`.

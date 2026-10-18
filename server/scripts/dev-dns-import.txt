@@ -3,8 +3,11 @@
 ; How to apply (one time): Cloudflare dashboard → aarogyaruchi.com zone →
 ; DNS → Records → Import and open this file. Re-importing is safe (existing
 ; records are skipped/updated). All three hostnames point at the dedicated
-; dev tunnel bb8db68b-9ab7-46cd-90a3-eeecd8f31acd whose connector container
-; runs on the dev box (server/deploy-dev.sh).
+; dev tunnel whose connector container runs on the dev box (server/deploy-dev.sh).
+;
+; BEFORE IMPORTING: replace every <dev-tunnel-id> below with the dev tunnel's
+; UUID. It is deliberately not committed (this repo is public) — it lives in
+; server/.dev-tunnel-id or ~/.cloudflared/<uuid>.json on the operator machine.
 ;
 ;   dev-api    → Go API          (public by design; OTP/session auth)
 ;   dev-db     → Adminer         (basic auth, user lohit — same password
@@ -28,6 +31,6 @@
 ; (created by accident) can be deleted.
 
 $ORIGIN aarogyaruchi.com.
-dev-api     1 IN CNAME bb8db68b-9ab7-46cd-90a3-eeecd8f31acd.cfargotunnel.com.
-dev-db      1 IN CNAME bb8db68b-9ab7-46cd-90a3-eeecd8f31acd.cfargotunnel.com.
-dev-cache   1 IN CNAME bb8db68b-9ab7-46cd-90a3-eeecd8f31acd.cfargotunnel.com.
+dev-api     1 IN CNAME <dev-tunnel-id>.cfargotunnel.com.
+dev-db      1 IN CNAME <dev-tunnel-id>.cfargotunnel.com.
+dev-cache   1 IN CNAME <dev-tunnel-id>.cfargotunnel.com.

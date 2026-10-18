@@ -2,7 +2,9 @@
   "name": "images-cdn",
   "main": "src/index.ts",
   "compatibility_date": "2024-01-01",
-  "account_id": "0457dd971eb68eea2c72d1c2599881d2",
+  // account_id is NOT committed (public repo). Export CLOUDFLARE_ACCOUNT_ID
+  // before `bunx wrangler deploy`, or let wrangler resolve the account from
+  // the logged-in profile (see clients/.env.example).
   "r2_buckets": [{ "binding": "R2_BUCKET", "bucket_name": "aarogyaruchi-products" }],
   // Link-preview (Open Graph) metadata, key = product slug. Written by this
   // worker's HMAC-authed /og/* endpoint (Go post-commit hook), read by the

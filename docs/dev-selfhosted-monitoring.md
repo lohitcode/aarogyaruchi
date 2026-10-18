@@ -59,7 +59,7 @@ systemctl --user enable --now podman.socket      # API socket alloy needs
 │                              grafana :3000          │
 └─────────────────────────────────────────────────────┘
  LAN 192.168.0.8:3000 · public: dev-grafana.lohitcode.com
-   (Cloudflare → tunnel bb8db68b → caddy basic auth → grafana login)
+   (Cloudflare → tunnel <dev-tunnel-id> → caddy basic auth → grafana login)
  cloudflared tunnel: dev-api *./metrics → 404 (public leak fix)
 ```
 
@@ -68,7 +68,7 @@ systemctl --user enable --now podman.socket      # API socket alloy needs
   basic-auth gate (same `lohit` credential as dev-db/dev-cache), then
   Grafana's own admin login. Self-signup disabled. The hostname lives on
   the lohitcode.com zone because that DNS is auto-managed locally
-  (`cloudflared tunnel route dns bb8db68b dev-grafana.lohitcode.com`);
+  (`cloudflared tunnel route dns <dev-tunnel-id> dev-grafana.lohitcode.com`);
   aarogyaruchi.com records need manual dashboard edits.
 - Datasources are provisioned with the **same UIDs as Grafana
   Cloud** (`grafanacloud-prom` / `grafanacloud-logs`), so the same

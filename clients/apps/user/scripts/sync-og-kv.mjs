@@ -32,8 +32,15 @@ const API_URL =
 const SITE_URL = "https://aarogyaruchi.com";
 const NAMESPACE_ID =
   process.env.OG_KV_NAMESPACE_ID ?? "fa0f19e0df5c4dadbcfe9d44fade9f0b";
-const ACCOUNT_ID =
-  process.env.CLOUDFLARE_ACCOUNT_ID ?? "0457dd971eb68eea2c72d1c2599881d2";
+// Account ID is intentionally NOT hardcoded: this repo is public. Export
+// CLOUDFLARE_ACCOUNT_ID (see clients/.env.example) before running.
+const ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
+if (!ACCOUNT_ID) {
+  console.error(
+    "CLOUDFLARE_ACCOUNT_ID is not set — export it (clients/.env.example) and re-run."
+  );
+  process.exit(1);
+}
 const OG_ASSETS_DIR = path.join(appDir, "public", "og");
 
 async function ogImageFor(product) {

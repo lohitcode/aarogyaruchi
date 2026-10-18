@@ -52,7 +52,7 @@ go run cmd/server/main.go
 │  aarogyaruchi-admin-dev Worker (dev-admin.aarogyaruchi.com)        │
 │  dev-api / dev-db / dev-cache .aarogyaruchi.com (proxied CNAMEs)   │
 └───────────────────────────────┬───────────────────────────────────┘
-                                │ dedicated Tunnel bb8db68b
+                                │ dedicated Tunnel <dev-tunnel-id>
 ┌───────────────────────────────▼── dev box · Fedora 44 ────────────┐
 │  ssh dev-server (192.168.0.8 on LAN) · rootless podman ~/aarogya… │
 │                                                                    │
@@ -61,7 +61,7 @@ go run cmd/server/main.go
 │                                              ├─▶ Adminer           │
 │                                              └─▶ redis-commander   │
 │  server:8080 ──▶ PostgreSQL + Valkey    (LAN API: 192.168.0.8:8080)│
-│  separate root tunnel 37baf058 serves only ssh.lohitcode.com       │
+│  separate root tunnel <root-id> serves only ssh.lohitcode.com      │
 └────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -220,7 +220,7 @@ cd server && ./deploy-dev.sh --reset-db  # wipe dev DB + cache volumes
   `https://dev-api.aarogyaruchi.com`, Adminer
   `https://dev-db.aarogyaruchi.com`, redis-commander
   `https://dev-cache.aarogyaruchi.com` — dedicated Cloudflare tunnel
-  `bb8db68b…`, connector runs as a container beside the stack;
+  `<dev-tunnel-id>…`, connector runs as a container beside the stack;
   `dev-api.lohitcode.com` is a working alias. The UIs sit behind a
   basic-auth caddy container (Caddyfile.dev, same user/password as the
   prod db/cache UIs) — never route them straight through the tunnel.
@@ -230,7 +230,7 @@ cd server && ./deploy-dev.sh --reset-db  # wipe dev DB + cache volumes
   keeps `SESSION_COOKIE_SAMESITE_NONE=true` so the workers.dev site alias
   keeps working too. NOTE: the `dev-api.aarogyaruchi.com` CNAME had to be
   added manually in the Cloudflare dashboard (aarogyaruchi.com zone):
-  `dev-api` → `bb8db68b-9ab7-46cd-90a3-eeecd8f31acd.cfargotunnel.com`,
+  `dev-api` → `<dev-tunnel-id>.cfargotunnel.com`,
   proxied — or import `server/scripts/dev-dns-import.txt` (BIND zone
   file with all three records) via dashboard DNS → Import; the local
   cloudflared cert only manages lohitcode.com DNS.
