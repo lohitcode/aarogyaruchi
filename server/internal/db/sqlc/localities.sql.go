@@ -12,7 +12,7 @@ import (
 )
 
 const createLocality = `-- name: CreateLocality :one
-INSERT INTO localities (name, city, perimeters) VALUES ($1, $2, $3) RETURNING id, name, city, is_active, created_at, perimeters
+INSERT INTO localities (name, city, perimeters) VALUES ($1, $2, $3) RETURNING id, name, city, is_active, perimeters, created_at
 `
 
 type CreateLocalityParams struct {
@@ -29,14 +29,14 @@ func (q *Queries) CreateLocality(ctx context.Context, arg CreateLocalityParams) 
 		&i.Name,
 		&i.City,
 		&i.IsActive,
-		&i.CreatedAt,
 		&i.Perimeters,
+		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getLocality = `-- name: GetLocality :one
-SELECT id, name, city, is_active, created_at, perimeters FROM localities WHERE id = $1
+SELECT id, name, city, is_active, perimeters, created_at FROM localities WHERE id = $1
 `
 
 func (q *Queries) GetLocality(ctx context.Context, id int64) (Locality, error) {
@@ -47,14 +47,14 @@ func (q *Queries) GetLocality(ctx context.Context, id int64) (Locality, error) {
 		&i.Name,
 		&i.City,
 		&i.IsActive,
-		&i.CreatedAt,
 		&i.Perimeters,
+		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const listAllLocalities = `-- name: ListAllLocalities :many
-SELECT id, name, city, is_active, created_at, perimeters FROM localities ORDER BY name
+SELECT id, name, city, is_active, perimeters, created_at FROM localities ORDER BY name
 `
 
 func (q *Queries) ListAllLocalities(ctx context.Context) ([]Locality, error) {
@@ -71,8 +71,8 @@ func (q *Queries) ListAllLocalities(ctx context.Context) ([]Locality, error) {
 			&i.Name,
 			&i.City,
 			&i.IsActive,
-			&i.CreatedAt,
 			&i.Perimeters,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -85,7 +85,7 @@ func (q *Queries) ListAllLocalities(ctx context.Context) ([]Locality, error) {
 }
 
 const listLocalities = `-- name: ListLocalities :many
-SELECT id, name, city, is_active, created_at, perimeters FROM localities WHERE is_active = TRUE ORDER BY name
+SELECT id, name, city, is_active, perimeters, created_at FROM localities WHERE is_active = TRUE ORDER BY name
 `
 
 func (q *Queries) ListLocalities(ctx context.Context) ([]Locality, error) {
@@ -102,8 +102,8 @@ func (q *Queries) ListLocalities(ctx context.Context) ([]Locality, error) {
 			&i.Name,
 			&i.City,
 			&i.IsActive,
-			&i.CreatedAt,
 			&i.Perimeters,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -168,7 +168,7 @@ func (q *Queries) LockLocalityOverlapCheck(ctx context.Context) error {
 const updateLocality = `-- name: UpdateLocality :one
 UPDATE localities SET name = $2, city = $3, is_active = $4, perimeters = $5
 WHERE id = $1
-RETURNING id, name, city, is_active, created_at, perimeters
+RETURNING id, name, city, is_active, perimeters, created_at
 `
 
 type UpdateLocalityParams struct {
@@ -193,8 +193,8 @@ func (q *Queries) UpdateLocality(ctx context.Context, arg UpdateLocalityParams) 
 		&i.Name,
 		&i.City,
 		&i.IsActive,
-		&i.CreatedAt,
 		&i.Perimeters,
+		&i.CreatedAt,
 	)
 	return i, err
 }

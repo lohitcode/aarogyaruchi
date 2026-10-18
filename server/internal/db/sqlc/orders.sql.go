@@ -12,7 +12,7 @@ import (
 )
 
 const adminListOrders = `-- name: AdminListOrders :many
-SELECT o.id, o.user_id, o.delivery_date, o.delivery_partner_id, o.assigned_at, o.status, o.payment_method, o.created_at, o.updated_at, o.total_amount_paise, o.code, o.batch_id, o.package_token, o.ship_address_line, o.ship_landmark, o.ship_locality_id, o.ship_latitude, o.ship_longitude, o.ship_accuracy_m, o.ship_instructions, o.delivered_at, o.delivery_note, o.failure_reason, o.updated_by_actor, u.name AS user_name, u.phone AS user_phone,
+SELECT o.id, o.code, o.package_token, o.user_id, o.batch_id, o.delivery_date, o.status, o.payment_method, o.total_amount_paise, o.ship_address_line, o.ship_landmark, o.ship_locality_id, o.ship_latitude, o.ship_longitude, o.ship_accuracy_m, o.ship_instructions, o.delivery_partner_id, o.assigned_at, o.delivered_at, o.delivery_note, o.failure_reason, o.updated_by_actor, o.created_at, o.updated_at, u.name AS user_name, u.phone AS user_phone,
        dp.name AS partner_name,
        stop.run_id AS run_id, stop.position AS stop_position, stop.status AS stop_status
 FROM orders o
@@ -54,18 +54,14 @@ type AdminListOrdersParams struct {
 
 type AdminListOrdersRow struct {
 	ID                int64
+	Code              pgtype.Text
+	PackageToken      pgtype.Text
 	UserID            int64
+	BatchID           pgtype.Int8
 	DeliveryDate      pgtype.Date
-	DeliveryPartnerID pgtype.Int8
-	AssignedAt        pgtype.Timestamptz
 	Status            pgtype.Text
 	PaymentMethod     string
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
 	TotalAmountPaise  int64
-	Code              pgtype.Text
-	BatchID           pgtype.Int8
-	PackageToken      pgtype.Text
 	ShipAddressLine   pgtype.Text
 	ShipLandmark      pgtype.Text
 	ShipLocalityID    pgtype.Int8
@@ -73,10 +69,14 @@ type AdminListOrdersRow struct {
 	ShipLongitude     pgtype.Float8
 	ShipAccuracyM     pgtype.Float8
 	ShipInstructions  pgtype.Text
+	DeliveryPartnerID pgtype.Int8
+	AssignedAt        pgtype.Timestamptz
 	DeliveredAt       pgtype.Timestamptz
 	DeliveryNote      pgtype.Text
 	FailureReason     pgtype.Text
 	UpdatedByActor    pgtype.Text
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
 	UserName          pgtype.Text
 	UserPhone         string
 	PartnerName       pgtype.Text
@@ -108,18 +108,14 @@ func (q *Queries) AdminListOrders(ctx context.Context, arg AdminListOrdersParams
 		var i AdminListOrdersRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Code,
+			&i.PackageToken,
 			&i.UserID,
+			&i.BatchID,
 			&i.DeliveryDate,
-			&i.DeliveryPartnerID,
-			&i.AssignedAt,
 			&i.Status,
 			&i.PaymentMethod,
-			&i.CreatedAt,
-			&i.UpdatedAt,
 			&i.TotalAmountPaise,
-			&i.Code,
-			&i.BatchID,
-			&i.PackageToken,
 			&i.ShipAddressLine,
 			&i.ShipLandmark,
 			&i.ShipLocalityID,
@@ -127,10 +123,14 @@ func (q *Queries) AdminListOrders(ctx context.Context, arg AdminListOrdersParams
 			&i.ShipLongitude,
 			&i.ShipAccuracyM,
 			&i.ShipInstructions,
+			&i.DeliveryPartnerID,
+			&i.AssignedAt,
 			&i.DeliveredAt,
 			&i.DeliveryNote,
 			&i.FailureReason,
 			&i.UpdatedByActor,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 			&i.UserName,
 			&i.UserPhone,
 			&i.PartnerName,
@@ -171,7 +171,7 @@ INSERT INTO orders (
     $7, $8, $9,
     $10, $11, $12, $13
 )
-RETURNING id, user_id, delivery_date, delivery_partner_id, assigned_at, status, payment_method, created_at, updated_at, total_amount_paise, code, batch_id, package_token, ship_address_line, ship_landmark, ship_locality_id, ship_latitude, ship_longitude, ship_accuracy_m, ship_instructions, delivered_at, delivery_note, failure_reason, updated_by_actor
+RETURNING id, code, package_token, user_id, batch_id, delivery_date, status, payment_method, total_amount_paise, ship_address_line, ship_landmark, ship_locality_id, ship_latitude, ship_longitude, ship_accuracy_m, ship_instructions, delivery_partner_id, assigned_at, delivered_at, delivery_note, failure_reason, updated_by_actor, created_at, updated_at
 `
 
 type CreateOrderParams struct {
@@ -209,18 +209,14 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 	var i Order
 	err := row.Scan(
 		&i.ID,
+		&i.Code,
+		&i.PackageToken,
 		&i.UserID,
+		&i.BatchID,
 		&i.DeliveryDate,
-		&i.DeliveryPartnerID,
-		&i.AssignedAt,
 		&i.Status,
 		&i.PaymentMethod,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 		&i.TotalAmountPaise,
-		&i.Code,
-		&i.BatchID,
-		&i.PackageToken,
 		&i.ShipAddressLine,
 		&i.ShipLandmark,
 		&i.ShipLocalityID,
@@ -228,10 +224,14 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		&i.ShipLongitude,
 		&i.ShipAccuracyM,
 		&i.ShipInstructions,
+		&i.DeliveryPartnerID,
+		&i.AssignedAt,
 		&i.DeliveredAt,
 		&i.DeliveryNote,
 		&i.FailureReason,
 		&i.UpdatedByActor,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -283,7 +283,7 @@ func (q *Queries) DashboardStatusCounts(ctx context.Context, arg DashboardStatus
 }
 
 const getOrder = `-- name: GetOrder :one
-SELECT id, user_id, delivery_date, delivery_partner_id, assigned_at, status, payment_method, created_at, updated_at, total_amount_paise, code, batch_id, package_token, ship_address_line, ship_landmark, ship_locality_id, ship_latitude, ship_longitude, ship_accuracy_m, ship_instructions, delivered_at, delivery_note, failure_reason, updated_by_actor FROM orders WHERE id = $1
+SELECT id, code, package_token, user_id, batch_id, delivery_date, status, payment_method, total_amount_paise, ship_address_line, ship_landmark, ship_locality_id, ship_latitude, ship_longitude, ship_accuracy_m, ship_instructions, delivery_partner_id, assigned_at, delivered_at, delivery_note, failure_reason, updated_by_actor, created_at, updated_at FROM orders WHERE id = $1
 `
 
 func (q *Queries) GetOrder(ctx context.Context, id int64) (Order, error) {
@@ -291,18 +291,14 @@ func (q *Queries) GetOrder(ctx context.Context, id int64) (Order, error) {
 	var i Order
 	err := row.Scan(
 		&i.ID,
+		&i.Code,
+		&i.PackageToken,
 		&i.UserID,
+		&i.BatchID,
 		&i.DeliveryDate,
-		&i.DeliveryPartnerID,
-		&i.AssignedAt,
 		&i.Status,
 		&i.PaymentMethod,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 		&i.TotalAmountPaise,
-		&i.Code,
-		&i.BatchID,
-		&i.PackageToken,
 		&i.ShipAddressLine,
 		&i.ShipLandmark,
 		&i.ShipLocalityID,
@@ -310,16 +306,20 @@ func (q *Queries) GetOrder(ctx context.Context, id int64) (Order, error) {
 		&i.ShipLongitude,
 		&i.ShipAccuracyM,
 		&i.ShipInstructions,
+		&i.DeliveryPartnerID,
+		&i.AssignedAt,
 		&i.DeliveredAt,
 		&i.DeliveryNote,
 		&i.FailureReason,
 		&i.UpdatedByActor,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getOrderByCode = `-- name: GetOrderByCode :one
-SELECT id, user_id, delivery_date, delivery_partner_id, assigned_at, status, payment_method, created_at, updated_at, total_amount_paise, code, batch_id, package_token, ship_address_line, ship_landmark, ship_locality_id, ship_latitude, ship_longitude, ship_accuracy_m, ship_instructions, delivered_at, delivery_note, failure_reason, updated_by_actor FROM orders WHERE code = $1
+SELECT id, code, package_token, user_id, batch_id, delivery_date, status, payment_method, total_amount_paise, ship_address_line, ship_landmark, ship_locality_id, ship_latitude, ship_longitude, ship_accuracy_m, ship_instructions, delivery_partner_id, assigned_at, delivered_at, delivery_note, failure_reason, updated_by_actor, created_at, updated_at FROM orders WHERE code = $1
 `
 
 func (q *Queries) GetOrderByCode(ctx context.Context, code pgtype.Text) (Order, error) {
@@ -327,18 +327,14 @@ func (q *Queries) GetOrderByCode(ctx context.Context, code pgtype.Text) (Order, 
 	var i Order
 	err := row.Scan(
 		&i.ID,
+		&i.Code,
+		&i.PackageToken,
 		&i.UserID,
+		&i.BatchID,
 		&i.DeliveryDate,
-		&i.DeliveryPartnerID,
-		&i.AssignedAt,
 		&i.Status,
 		&i.PaymentMethod,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 		&i.TotalAmountPaise,
-		&i.Code,
-		&i.BatchID,
-		&i.PackageToken,
 		&i.ShipAddressLine,
 		&i.ShipLandmark,
 		&i.ShipLocalityID,
@@ -346,16 +342,20 @@ func (q *Queries) GetOrderByCode(ctx context.Context, code pgtype.Text) (Order, 
 		&i.ShipLongitude,
 		&i.ShipAccuracyM,
 		&i.ShipInstructions,
+		&i.DeliveryPartnerID,
+		&i.AssignedAt,
 		&i.DeliveredAt,
 		&i.DeliveryNote,
 		&i.FailureReason,
 		&i.UpdatedByActor,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getOrderByPackageToken = `-- name: GetOrderByPackageToken :one
-SELECT o.id, o.user_id, o.delivery_date, o.delivery_partner_id, o.assigned_at, o.status, o.payment_method, o.created_at, o.updated_at, o.total_amount_paise, o.code, o.batch_id, o.package_token, o.ship_address_line, o.ship_landmark, o.ship_locality_id, o.ship_latitude, o.ship_longitude, o.ship_accuracy_m, o.ship_instructions, o.delivered_at, o.delivery_note, o.failure_reason, o.updated_by_actor, u.name AS user_name, u.phone AS user_phone
+SELECT o.id, o.code, o.package_token, o.user_id, o.batch_id, o.delivery_date, o.status, o.payment_method, o.total_amount_paise, o.ship_address_line, o.ship_landmark, o.ship_locality_id, o.ship_latitude, o.ship_longitude, o.ship_accuracy_m, o.ship_instructions, o.delivery_partner_id, o.assigned_at, o.delivered_at, o.delivery_note, o.failure_reason, o.updated_by_actor, o.created_at, o.updated_at, u.name AS user_name, u.phone AS user_phone
 FROM orders o
 JOIN users u ON u.id = o.user_id
 WHERE o.package_token = $1
@@ -363,18 +363,14 @@ WHERE o.package_token = $1
 
 type GetOrderByPackageTokenRow struct {
 	ID                int64
+	Code              pgtype.Text
+	PackageToken      pgtype.Text
 	UserID            int64
+	BatchID           pgtype.Int8
 	DeliveryDate      pgtype.Date
-	DeliveryPartnerID pgtype.Int8
-	AssignedAt        pgtype.Timestamptz
 	Status            pgtype.Text
 	PaymentMethod     string
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
 	TotalAmountPaise  int64
-	Code              pgtype.Text
-	BatchID           pgtype.Int8
-	PackageToken      pgtype.Text
 	ShipAddressLine   pgtype.Text
 	ShipLandmark      pgtype.Text
 	ShipLocalityID    pgtype.Int8
@@ -382,10 +378,14 @@ type GetOrderByPackageTokenRow struct {
 	ShipLongitude     pgtype.Float8
 	ShipAccuracyM     pgtype.Float8
 	ShipInstructions  pgtype.Text
+	DeliveryPartnerID pgtype.Int8
+	AssignedAt        pgtype.Timestamptz
 	DeliveredAt       pgtype.Timestamptz
 	DeliveryNote      pgtype.Text
 	FailureReason     pgtype.Text
 	UpdatedByActor    pgtype.Text
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
 	UserName          pgtype.Text
 	UserPhone         string
 }
@@ -395,18 +395,14 @@ func (q *Queries) GetOrderByPackageToken(ctx context.Context, packageToken pgtyp
 	var i GetOrderByPackageTokenRow
 	err := row.Scan(
 		&i.ID,
+		&i.Code,
+		&i.PackageToken,
 		&i.UserID,
+		&i.BatchID,
 		&i.DeliveryDate,
-		&i.DeliveryPartnerID,
-		&i.AssignedAt,
 		&i.Status,
 		&i.PaymentMethod,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 		&i.TotalAmountPaise,
-		&i.Code,
-		&i.BatchID,
-		&i.PackageToken,
 		&i.ShipAddressLine,
 		&i.ShipLandmark,
 		&i.ShipLocalityID,
@@ -414,10 +410,14 @@ func (q *Queries) GetOrderByPackageToken(ctx context.Context, packageToken pgtyp
 		&i.ShipLongitude,
 		&i.ShipAccuracyM,
 		&i.ShipInstructions,
+		&i.DeliveryPartnerID,
+		&i.AssignedAt,
 		&i.DeliveredAt,
 		&i.DeliveryNote,
 		&i.FailureReason,
 		&i.UpdatedByActor,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 		&i.UserName,
 		&i.UserPhone,
 	)
@@ -425,7 +425,7 @@ func (q *Queries) GetOrderByPackageToken(ctx context.Context, packageToken pgtyp
 }
 
 const getOrderForAdmin = `-- name: GetOrderForAdmin :one
-SELECT o.id, o.user_id, o.delivery_date, o.delivery_partner_id, o.assigned_at, o.status, o.payment_method, o.created_at, o.updated_at, o.total_amount_paise, o.code, o.batch_id, o.package_token, o.ship_address_line, o.ship_landmark, o.ship_locality_id, o.ship_latitude, o.ship_longitude, o.ship_accuracy_m, o.ship_instructions, o.delivered_at, o.delivery_note, o.failure_reason, o.updated_by_actor, u.name AS user_name, u.phone AS user_phone,
+SELECT o.id, o.code, o.package_token, o.user_id, o.batch_id, o.delivery_date, o.status, o.payment_method, o.total_amount_paise, o.ship_address_line, o.ship_landmark, o.ship_locality_id, o.ship_latitude, o.ship_longitude, o.ship_accuracy_m, o.ship_instructions, o.delivery_partner_id, o.assigned_at, o.delivered_at, o.delivery_note, o.failure_reason, o.updated_by_actor, o.created_at, o.updated_at, u.name AS user_name, u.phone AS user_phone,
        dp.name AS partner_name, dp.phone AS partner_phone
 FROM orders o
 JOIN users u ON u.id = o.user_id
@@ -435,18 +435,14 @@ WHERE o.id = $1
 
 type GetOrderForAdminRow struct {
 	ID                int64
+	Code              pgtype.Text
+	PackageToken      pgtype.Text
 	UserID            int64
+	BatchID           pgtype.Int8
 	DeliveryDate      pgtype.Date
-	DeliveryPartnerID pgtype.Int8
-	AssignedAt        pgtype.Timestamptz
 	Status            pgtype.Text
 	PaymentMethod     string
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
 	TotalAmountPaise  int64
-	Code              pgtype.Text
-	BatchID           pgtype.Int8
-	PackageToken      pgtype.Text
 	ShipAddressLine   pgtype.Text
 	ShipLandmark      pgtype.Text
 	ShipLocalityID    pgtype.Int8
@@ -454,10 +450,14 @@ type GetOrderForAdminRow struct {
 	ShipLongitude     pgtype.Float8
 	ShipAccuracyM     pgtype.Float8
 	ShipInstructions  pgtype.Text
+	DeliveryPartnerID pgtype.Int8
+	AssignedAt        pgtype.Timestamptz
 	DeliveredAt       pgtype.Timestamptz
 	DeliveryNote      pgtype.Text
 	FailureReason     pgtype.Text
 	UpdatedByActor    pgtype.Text
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
 	UserName          pgtype.Text
 	UserPhone         string
 	PartnerName       pgtype.Text
@@ -469,18 +469,14 @@ func (q *Queries) GetOrderForAdmin(ctx context.Context, id int64) (GetOrderForAd
 	var i GetOrderForAdminRow
 	err := row.Scan(
 		&i.ID,
+		&i.Code,
+		&i.PackageToken,
 		&i.UserID,
+		&i.BatchID,
 		&i.DeliveryDate,
-		&i.DeliveryPartnerID,
-		&i.AssignedAt,
 		&i.Status,
 		&i.PaymentMethod,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 		&i.TotalAmountPaise,
-		&i.Code,
-		&i.BatchID,
-		&i.PackageToken,
 		&i.ShipAddressLine,
 		&i.ShipLandmark,
 		&i.ShipLocalityID,
@@ -488,10 +484,14 @@ func (q *Queries) GetOrderForAdmin(ctx context.Context, id int64) (GetOrderForAd
 		&i.ShipLongitude,
 		&i.ShipAccuracyM,
 		&i.ShipInstructions,
+		&i.DeliveryPartnerID,
+		&i.AssignedAt,
 		&i.DeliveredAt,
 		&i.DeliveryNote,
 		&i.FailureReason,
 		&i.UpdatedByActor,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 		&i.UserName,
 		&i.UserPhone,
 		&i.PartnerName,
@@ -501,7 +501,7 @@ func (q *Queries) GetOrderForAdmin(ctx context.Context, id int64) (GetOrderForAd
 }
 
 const getOrderForUpdate = `-- name: GetOrderForUpdate :one
-SELECT id, user_id, delivery_date, delivery_partner_id, assigned_at, status, payment_method, created_at, updated_at, total_amount_paise, code, batch_id, package_token, ship_address_line, ship_landmark, ship_locality_id, ship_latitude, ship_longitude, ship_accuracy_m, ship_instructions, delivered_at, delivery_note, failure_reason, updated_by_actor FROM orders WHERE id = $1 FOR UPDATE
+SELECT id, code, package_token, user_id, batch_id, delivery_date, status, payment_method, total_amount_paise, ship_address_line, ship_landmark, ship_locality_id, ship_latitude, ship_longitude, ship_accuracy_m, ship_instructions, delivery_partner_id, assigned_at, delivered_at, delivery_note, failure_reason, updated_by_actor, created_at, updated_at FROM orders WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetOrderForUpdate(ctx context.Context, id int64) (Order, error) {
@@ -509,18 +509,14 @@ func (q *Queries) GetOrderForUpdate(ctx context.Context, id int64) (Order, error
 	var i Order
 	err := row.Scan(
 		&i.ID,
+		&i.Code,
+		&i.PackageToken,
 		&i.UserID,
+		&i.BatchID,
 		&i.DeliveryDate,
-		&i.DeliveryPartnerID,
-		&i.AssignedAt,
 		&i.Status,
 		&i.PaymentMethod,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 		&i.TotalAmountPaise,
-		&i.Code,
-		&i.BatchID,
-		&i.PackageToken,
 		&i.ShipAddressLine,
 		&i.ShipLandmark,
 		&i.ShipLocalityID,
@@ -528,16 +524,20 @@ func (q *Queries) GetOrderForUpdate(ctx context.Context, id int64) (Order, error
 		&i.ShipLongitude,
 		&i.ShipAccuracyM,
 		&i.ShipInstructions,
+		&i.DeliveryPartnerID,
+		&i.AssignedAt,
 		&i.DeliveredAt,
 		&i.DeliveryNote,
 		&i.FailureReason,
 		&i.UpdatedByActor,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getOrderForUser = `-- name: GetOrderForUser :one
-SELECT o.id, o.user_id, o.delivery_date, o.delivery_partner_id, o.assigned_at, o.status, o.payment_method, o.created_at, o.updated_at, o.total_amount_paise, o.code, o.batch_id, o.package_token, o.ship_address_line, o.ship_landmark, o.ship_locality_id, o.ship_latitude, o.ship_longitude, o.ship_accuracy_m, o.ship_instructions, o.delivered_at, o.delivery_note, o.failure_reason, o.updated_by_actor, dp.name AS partner_name, dp.phone AS partner_phone
+SELECT o.id, o.code, o.package_token, o.user_id, o.batch_id, o.delivery_date, o.status, o.payment_method, o.total_amount_paise, o.ship_address_line, o.ship_landmark, o.ship_locality_id, o.ship_latitude, o.ship_longitude, o.ship_accuracy_m, o.ship_instructions, o.delivery_partner_id, o.assigned_at, o.delivered_at, o.delivery_note, o.failure_reason, o.updated_by_actor, o.created_at, o.updated_at, dp.name AS partner_name, dp.phone AS partner_phone
 FROM orders o
 LEFT JOIN delivery_partners dp ON dp.id = o.delivery_partner_id
 WHERE o.id = $1 AND o.user_id = $2
@@ -550,18 +550,14 @@ type GetOrderForUserParams struct {
 
 type GetOrderForUserRow struct {
 	ID                int64
+	Code              pgtype.Text
+	PackageToken      pgtype.Text
 	UserID            int64
+	BatchID           pgtype.Int8
 	DeliveryDate      pgtype.Date
-	DeliveryPartnerID pgtype.Int8
-	AssignedAt        pgtype.Timestamptz
 	Status            pgtype.Text
 	PaymentMethod     string
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
 	TotalAmountPaise  int64
-	Code              pgtype.Text
-	BatchID           pgtype.Int8
-	PackageToken      pgtype.Text
 	ShipAddressLine   pgtype.Text
 	ShipLandmark      pgtype.Text
 	ShipLocalityID    pgtype.Int8
@@ -569,10 +565,14 @@ type GetOrderForUserRow struct {
 	ShipLongitude     pgtype.Float8
 	ShipAccuracyM     pgtype.Float8
 	ShipInstructions  pgtype.Text
+	DeliveryPartnerID pgtype.Int8
+	AssignedAt        pgtype.Timestamptz
 	DeliveredAt       pgtype.Timestamptz
 	DeliveryNote      pgtype.Text
 	FailureReason     pgtype.Text
 	UpdatedByActor    pgtype.Text
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
 	PartnerName       pgtype.Text
 	PartnerPhone      pgtype.Text
 }
@@ -582,18 +582,14 @@ func (q *Queries) GetOrderForUser(ctx context.Context, arg GetOrderForUserParams
 	var i GetOrderForUserRow
 	err := row.Scan(
 		&i.ID,
+		&i.Code,
+		&i.PackageToken,
 		&i.UserID,
+		&i.BatchID,
 		&i.DeliveryDate,
-		&i.DeliveryPartnerID,
-		&i.AssignedAt,
 		&i.Status,
 		&i.PaymentMethod,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 		&i.TotalAmountPaise,
-		&i.Code,
-		&i.BatchID,
-		&i.PackageToken,
 		&i.ShipAddressLine,
 		&i.ShipLandmark,
 		&i.ShipLocalityID,
@@ -601,10 +597,14 @@ func (q *Queries) GetOrderForUser(ctx context.Context, arg GetOrderForUserParams
 		&i.ShipLongitude,
 		&i.ShipAccuracyM,
 		&i.ShipInstructions,
+		&i.DeliveryPartnerID,
+		&i.AssignedAt,
 		&i.DeliveredAt,
 		&i.DeliveryNote,
 		&i.FailureReason,
 		&i.UpdatedByActor,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 		&i.PartnerName,
 		&i.PartnerPhone,
 	)
@@ -612,7 +612,7 @@ func (q *Queries) GetOrderForUser(ctx context.Context, arg GetOrderForUserParams
 }
 
 const listAssignedOrdersForRun = `-- name: ListAssignedOrdersForRun :many
-SELECT o.id, o.user_id, o.delivery_date, o.delivery_partner_id, o.assigned_at, o.status, o.payment_method, o.created_at, o.updated_at, o.total_amount_paise, o.code, o.batch_id, o.package_token, o.ship_address_line, o.ship_landmark, o.ship_locality_id, o.ship_latitude, o.ship_longitude, o.ship_accuracy_m, o.ship_instructions, o.delivered_at, o.delivery_note, o.failure_reason, o.updated_by_actor, u.name AS user_name, u.phone AS user_phone
+SELECT o.id, o.code, o.package_token, o.user_id, o.batch_id, o.delivery_date, o.status, o.payment_method, o.total_amount_paise, o.ship_address_line, o.ship_landmark, o.ship_locality_id, o.ship_latitude, o.ship_longitude, o.ship_accuracy_m, o.ship_instructions, o.delivery_partner_id, o.assigned_at, o.delivered_at, o.delivery_note, o.failure_reason, o.updated_by_actor, o.created_at, o.updated_at, u.name AS user_name, u.phone AS user_phone
 FROM orders o
 JOIN run_stops rs ON rs.order_id = o.id AND rs.status <> 'skipped'
 JOIN users u ON u.id = o.user_id
@@ -622,18 +622,14 @@ ORDER BY rs.position
 
 type ListAssignedOrdersForRunRow struct {
 	ID                int64
+	Code              pgtype.Text
+	PackageToken      pgtype.Text
 	UserID            int64
+	BatchID           pgtype.Int8
 	DeliveryDate      pgtype.Date
-	DeliveryPartnerID pgtype.Int8
-	AssignedAt        pgtype.Timestamptz
 	Status            pgtype.Text
 	PaymentMethod     string
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
 	TotalAmountPaise  int64
-	Code              pgtype.Text
-	BatchID           pgtype.Int8
-	PackageToken      pgtype.Text
 	ShipAddressLine   pgtype.Text
 	ShipLandmark      pgtype.Text
 	ShipLocalityID    pgtype.Int8
@@ -641,10 +637,14 @@ type ListAssignedOrdersForRunRow struct {
 	ShipLongitude     pgtype.Float8
 	ShipAccuracyM     pgtype.Float8
 	ShipInstructions  pgtype.Text
+	DeliveryPartnerID pgtype.Int8
+	AssignedAt        pgtype.Timestamptz
 	DeliveredAt       pgtype.Timestamptz
 	DeliveryNote      pgtype.Text
 	FailureReason     pgtype.Text
 	UpdatedByActor    pgtype.Text
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
 	UserName          pgtype.Text
 	UserPhone         string
 }
@@ -660,18 +660,14 @@ func (q *Queries) ListAssignedOrdersForRun(ctx context.Context, runID int64) ([]
 		var i ListAssignedOrdersForRunRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Code,
+			&i.PackageToken,
 			&i.UserID,
+			&i.BatchID,
 			&i.DeliveryDate,
-			&i.DeliveryPartnerID,
-			&i.AssignedAt,
 			&i.Status,
 			&i.PaymentMethod,
-			&i.CreatedAt,
-			&i.UpdatedAt,
 			&i.TotalAmountPaise,
-			&i.Code,
-			&i.BatchID,
-			&i.PackageToken,
 			&i.ShipAddressLine,
 			&i.ShipLandmark,
 			&i.ShipLocalityID,
@@ -679,10 +675,14 @@ func (q *Queries) ListAssignedOrdersForRun(ctx context.Context, runID int64) ([]
 			&i.ShipLongitude,
 			&i.ShipAccuracyM,
 			&i.ShipInstructions,
+			&i.DeliveryPartnerID,
+			&i.AssignedAt,
 			&i.DeliveredAt,
 			&i.DeliveryNote,
 			&i.FailureReason,
 			&i.UpdatedByActor,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 			&i.UserName,
 			&i.UserPhone,
 		); err != nil {
@@ -697,7 +697,7 @@ func (q *Queries) ListAssignedOrdersForRun(ctx context.Context, runID int64) ([]
 }
 
 const listOrdersForBatch = `-- name: ListOrdersForBatch :many
-SELECT o.id, o.user_id, o.delivery_date, o.delivery_partner_id, o.assigned_at, o.status, o.payment_method, o.created_at, o.updated_at, o.total_amount_paise, o.code, o.batch_id, o.package_token, o.ship_address_line, o.ship_landmark, o.ship_locality_id, o.ship_latitude, o.ship_longitude, o.ship_accuracy_m, o.ship_instructions, o.delivered_at, o.delivery_note, o.failure_reason, o.updated_by_actor, u.name AS user_name, u.phone AS user_phone
+SELECT o.id, o.code, o.package_token, o.user_id, o.batch_id, o.delivery_date, o.status, o.payment_method, o.total_amount_paise, o.ship_address_line, o.ship_landmark, o.ship_locality_id, o.ship_latitude, o.ship_longitude, o.ship_accuracy_m, o.ship_instructions, o.delivery_partner_id, o.assigned_at, o.delivered_at, o.delivery_note, o.failure_reason, o.updated_by_actor, o.created_at, o.updated_at, u.name AS user_name, u.phone AS user_phone
 FROM orders o
 JOIN users u ON u.id = o.user_id
 WHERE o.batch_id = $1
@@ -706,18 +706,14 @@ ORDER BY o.id
 
 type ListOrdersForBatchRow struct {
 	ID                int64
+	Code              pgtype.Text
+	PackageToken      pgtype.Text
 	UserID            int64
+	BatchID           pgtype.Int8
 	DeliveryDate      pgtype.Date
-	DeliveryPartnerID pgtype.Int8
-	AssignedAt        pgtype.Timestamptz
 	Status            pgtype.Text
 	PaymentMethod     string
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
 	TotalAmountPaise  int64
-	Code              pgtype.Text
-	BatchID           pgtype.Int8
-	PackageToken      pgtype.Text
 	ShipAddressLine   pgtype.Text
 	ShipLandmark      pgtype.Text
 	ShipLocalityID    pgtype.Int8
@@ -725,10 +721,14 @@ type ListOrdersForBatchRow struct {
 	ShipLongitude     pgtype.Float8
 	ShipAccuracyM     pgtype.Float8
 	ShipInstructions  pgtype.Text
+	DeliveryPartnerID pgtype.Int8
+	AssignedAt        pgtype.Timestamptz
 	DeliveredAt       pgtype.Timestamptz
 	DeliveryNote      pgtype.Text
 	FailureReason     pgtype.Text
 	UpdatedByActor    pgtype.Text
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
 	UserName          pgtype.Text
 	UserPhone         string
 }
@@ -744,18 +744,14 @@ func (q *Queries) ListOrdersForBatch(ctx context.Context, batchID pgtype.Int8) (
 		var i ListOrdersForBatchRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Code,
+			&i.PackageToken,
 			&i.UserID,
+			&i.BatchID,
 			&i.DeliveryDate,
-			&i.DeliveryPartnerID,
-			&i.AssignedAt,
 			&i.Status,
 			&i.PaymentMethod,
-			&i.CreatedAt,
-			&i.UpdatedAt,
 			&i.TotalAmountPaise,
-			&i.Code,
-			&i.BatchID,
-			&i.PackageToken,
 			&i.ShipAddressLine,
 			&i.ShipLandmark,
 			&i.ShipLocalityID,
@@ -763,10 +759,14 @@ func (q *Queries) ListOrdersForBatch(ctx context.Context, batchID pgtype.Int8) (
 			&i.ShipLongitude,
 			&i.ShipAccuracyM,
 			&i.ShipInstructions,
+			&i.DeliveryPartnerID,
+			&i.AssignedAt,
 			&i.DeliveredAt,
 			&i.DeliveryNote,
 			&i.FailureReason,
 			&i.UpdatedByActor,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 			&i.UserName,
 			&i.UserPhone,
 		); err != nil {
@@ -781,7 +781,7 @@ func (q *Queries) ListOrdersForBatch(ctx context.Context, batchID pgtype.Int8) (
 }
 
 const listReadyOrdersForBatchLocality = `-- name: ListReadyOrdersForBatchLocality :many
-SELECT o.id, o.user_id, o.delivery_date, o.delivery_partner_id, o.assigned_at, o.status, o.payment_method, o.created_at, o.updated_at, o.total_amount_paise, o.code, o.batch_id, o.package_token, o.ship_address_line, o.ship_landmark, o.ship_locality_id, o.ship_latitude, o.ship_longitude, o.ship_accuracy_m, o.ship_instructions, o.delivered_at, o.delivery_note, o.failure_reason, o.updated_by_actor, u.name AS user_name, u.phone AS user_phone
+SELECT o.id, o.code, o.package_token, o.user_id, o.batch_id, o.delivery_date, o.status, o.payment_method, o.total_amount_paise, o.ship_address_line, o.ship_landmark, o.ship_locality_id, o.ship_latitude, o.ship_longitude, o.ship_accuracy_m, o.ship_instructions, o.delivery_partner_id, o.assigned_at, o.delivered_at, o.delivery_note, o.failure_reason, o.updated_by_actor, o.created_at, o.updated_at, u.name AS user_name, u.phone AS user_phone
 FROM orders o
 JOIN users u ON u.id = o.user_id
 WHERE o.batch_id = $1
@@ -797,18 +797,14 @@ type ListReadyOrdersForBatchLocalityParams struct {
 
 type ListReadyOrdersForBatchLocalityRow struct {
 	ID                int64
+	Code              pgtype.Text
+	PackageToken      pgtype.Text
 	UserID            int64
+	BatchID           pgtype.Int8
 	DeliveryDate      pgtype.Date
-	DeliveryPartnerID pgtype.Int8
-	AssignedAt        pgtype.Timestamptz
 	Status            pgtype.Text
 	PaymentMethod     string
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
 	TotalAmountPaise  int64
-	Code              pgtype.Text
-	BatchID           pgtype.Int8
-	PackageToken      pgtype.Text
 	ShipAddressLine   pgtype.Text
 	ShipLandmark      pgtype.Text
 	ShipLocalityID    pgtype.Int8
@@ -816,10 +812,14 @@ type ListReadyOrdersForBatchLocalityRow struct {
 	ShipLongitude     pgtype.Float8
 	ShipAccuracyM     pgtype.Float8
 	ShipInstructions  pgtype.Text
+	DeliveryPartnerID pgtype.Int8
+	AssignedAt        pgtype.Timestamptz
 	DeliveredAt       pgtype.Timestamptz
 	DeliveryNote      pgtype.Text
 	FailureReason     pgtype.Text
 	UpdatedByActor    pgtype.Text
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
 	UserName          pgtype.Text
 	UserPhone         string
 }
@@ -835,18 +835,14 @@ func (q *Queries) ListReadyOrdersForBatchLocality(ctx context.Context, arg ListR
 		var i ListReadyOrdersForBatchLocalityRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Code,
+			&i.PackageToken,
 			&i.UserID,
+			&i.BatchID,
 			&i.DeliveryDate,
-			&i.DeliveryPartnerID,
-			&i.AssignedAt,
 			&i.Status,
 			&i.PaymentMethod,
-			&i.CreatedAt,
-			&i.UpdatedAt,
 			&i.TotalAmountPaise,
-			&i.Code,
-			&i.BatchID,
-			&i.PackageToken,
 			&i.ShipAddressLine,
 			&i.ShipLandmark,
 			&i.ShipLocalityID,
@@ -854,10 +850,14 @@ func (q *Queries) ListReadyOrdersForBatchLocality(ctx context.Context, arg ListR
 			&i.ShipLongitude,
 			&i.ShipAccuracyM,
 			&i.ShipInstructions,
+			&i.DeliveryPartnerID,
+			&i.AssignedAt,
 			&i.DeliveredAt,
 			&i.DeliveryNote,
 			&i.FailureReason,
 			&i.UpdatedByActor,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 			&i.UserName,
 			&i.UserPhone,
 		); err != nil {
@@ -872,7 +872,7 @@ func (q *Queries) ListReadyOrdersForBatchLocality(ctx context.Context, arg ListR
 }
 
 const listUserOrders = `-- name: ListUserOrders :many
-SELECT id, user_id, delivery_date, delivery_partner_id, assigned_at, status, payment_method, created_at, updated_at, total_amount_paise, code, batch_id, package_token, ship_address_line, ship_landmark, ship_locality_id, ship_latitude, ship_longitude, ship_accuracy_m, ship_instructions, delivered_at, delivery_note, failure_reason, updated_by_actor FROM orders
+SELECT id, code, package_token, user_id, batch_id, delivery_date, status, payment_method, total_amount_paise, ship_address_line, ship_landmark, ship_locality_id, ship_latitude, ship_longitude, ship_accuracy_m, ship_instructions, delivery_partner_id, assigned_at, delivered_at, delivery_note, failure_reason, updated_by_actor, created_at, updated_at FROM orders
 WHERE user_id = $1
   AND ($2::BIGINT IS NULL OR id < $2)
 ORDER BY id DESC
@@ -896,18 +896,14 @@ func (q *Queries) ListUserOrders(ctx context.Context, arg ListUserOrdersParams) 
 		var i Order
 		if err := rows.Scan(
 			&i.ID,
+			&i.Code,
+			&i.PackageToken,
 			&i.UserID,
+			&i.BatchID,
 			&i.DeliveryDate,
-			&i.DeliveryPartnerID,
-			&i.AssignedAt,
 			&i.Status,
 			&i.PaymentMethod,
-			&i.CreatedAt,
-			&i.UpdatedAt,
 			&i.TotalAmountPaise,
-			&i.Code,
-			&i.BatchID,
-			&i.PackageToken,
 			&i.ShipAddressLine,
 			&i.ShipLandmark,
 			&i.ShipLocalityID,
@@ -915,10 +911,14 @@ func (q *Queries) ListUserOrders(ctx context.Context, arg ListUserOrdersParams) 
 			&i.ShipLongitude,
 			&i.ShipAccuracyM,
 			&i.ShipInstructions,
+			&i.DeliveryPartnerID,
+			&i.AssignedAt,
 			&i.DeliveredAt,
 			&i.DeliveryNote,
 			&i.FailureReason,
 			&i.UpdatedByActor,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -931,7 +931,7 @@ func (q *Queries) ListUserOrders(ctx context.Context, arg ListUserOrdersParams) 
 }
 
 const ordersNeedingAttention = `-- name: OrdersNeedingAttention :many
-SELECT o.id, o.user_id, o.delivery_date, o.delivery_partner_id, o.assigned_at, o.status, o.payment_method, o.created_at, o.updated_at, o.total_amount_paise, o.code, o.batch_id, o.package_token, o.ship_address_line, o.ship_landmark, o.ship_locality_id, o.ship_latitude, o.ship_longitude, o.ship_accuracy_m, o.ship_instructions, o.delivered_at, o.delivery_note, o.failure_reason, o.updated_by_actor, u.name AS user_name, u.phone AS user_phone
+SELECT o.id, o.code, o.package_token, o.user_id, o.batch_id, o.delivery_date, o.status, o.payment_method, o.total_amount_paise, o.ship_address_line, o.ship_landmark, o.ship_locality_id, o.ship_latitude, o.ship_longitude, o.ship_accuracy_m, o.ship_instructions, o.delivery_partner_id, o.assigned_at, o.delivered_at, o.delivery_note, o.failure_reason, o.updated_by_actor, o.created_at, o.updated_at, u.name AS user_name, u.phone AS user_phone
 FROM orders o
 JOIN users u ON u.id = o.user_id
 WHERE ($1::DATE IS NULL OR o.delivery_date = $1)
@@ -950,18 +950,14 @@ type OrdersNeedingAttentionParams struct {
 
 type OrdersNeedingAttentionRow struct {
 	ID                int64
+	Code              pgtype.Text
+	PackageToken      pgtype.Text
 	UserID            int64
+	BatchID           pgtype.Int8
 	DeliveryDate      pgtype.Date
-	DeliveryPartnerID pgtype.Int8
-	AssignedAt        pgtype.Timestamptz
 	Status            pgtype.Text
 	PaymentMethod     string
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
 	TotalAmountPaise  int64
-	Code              pgtype.Text
-	BatchID           pgtype.Int8
-	PackageToken      pgtype.Text
 	ShipAddressLine   pgtype.Text
 	ShipLandmark      pgtype.Text
 	ShipLocalityID    pgtype.Int8
@@ -969,10 +965,14 @@ type OrdersNeedingAttentionRow struct {
 	ShipLongitude     pgtype.Float8
 	ShipAccuracyM     pgtype.Float8
 	ShipInstructions  pgtype.Text
+	DeliveryPartnerID pgtype.Int8
+	AssignedAt        pgtype.Timestamptz
 	DeliveredAt       pgtype.Timestamptz
 	DeliveryNote      pgtype.Text
 	FailureReason     pgtype.Text
 	UpdatedByActor    pgtype.Text
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
 	UserName          pgtype.Text
 	UserPhone         string
 }
@@ -988,18 +988,14 @@ func (q *Queries) OrdersNeedingAttention(ctx context.Context, arg OrdersNeedingA
 		var i OrdersNeedingAttentionRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Code,
+			&i.PackageToken,
 			&i.UserID,
+			&i.BatchID,
 			&i.DeliveryDate,
-			&i.DeliveryPartnerID,
-			&i.AssignedAt,
 			&i.Status,
 			&i.PaymentMethod,
-			&i.CreatedAt,
-			&i.UpdatedAt,
 			&i.TotalAmountPaise,
-			&i.Code,
-			&i.BatchID,
-			&i.PackageToken,
 			&i.ShipAddressLine,
 			&i.ShipLandmark,
 			&i.ShipLocalityID,
@@ -1007,10 +1003,14 @@ func (q *Queries) OrdersNeedingAttention(ctx context.Context, arg OrdersNeedingA
 			&i.ShipLongitude,
 			&i.ShipAccuracyM,
 			&i.ShipInstructions,
+			&i.DeliveryPartnerID,
+			&i.AssignedAt,
 			&i.DeliveredAt,
 			&i.DeliveryNote,
 			&i.FailureReason,
 			&i.UpdatedByActor,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 			&i.UserName,
 			&i.UserPhone,
 		); err != nil {
@@ -1047,7 +1047,7 @@ UPDATE orders SET
     updated_at = NOW(),
     updated_by_actor = $2
 WHERE id = $1
-RETURNING id, user_id, delivery_date, delivery_partner_id, assigned_at, status, payment_method, created_at, updated_at, total_amount_paise, code, batch_id, package_token, ship_address_line, ship_landmark, ship_locality_id, ship_latitude, ship_longitude, ship_accuracy_m, ship_instructions, delivered_at, delivery_note, failure_reason, updated_by_actor
+RETURNING id, code, package_token, user_id, batch_id, delivery_date, status, payment_method, total_amount_paise, ship_address_line, ship_landmark, ship_locality_id, ship_latitude, ship_longitude, ship_accuracy_m, ship_instructions, delivery_partner_id, assigned_at, delivered_at, delivery_note, failure_reason, updated_by_actor, created_at, updated_at
 `
 
 type SetOrderDeliveredParams struct {
@@ -1060,18 +1060,14 @@ func (q *Queries) SetOrderDelivered(ctx context.Context, arg SetOrderDeliveredPa
 	var i Order
 	err := row.Scan(
 		&i.ID,
+		&i.Code,
+		&i.PackageToken,
 		&i.UserID,
+		&i.BatchID,
 		&i.DeliveryDate,
-		&i.DeliveryPartnerID,
-		&i.AssignedAt,
 		&i.Status,
 		&i.PaymentMethod,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 		&i.TotalAmountPaise,
-		&i.Code,
-		&i.BatchID,
-		&i.PackageToken,
 		&i.ShipAddressLine,
 		&i.ShipLandmark,
 		&i.ShipLocalityID,
@@ -1079,10 +1075,14 @@ func (q *Queries) SetOrderDelivered(ctx context.Context, arg SetOrderDeliveredPa
 		&i.ShipLongitude,
 		&i.ShipAccuracyM,
 		&i.ShipInstructions,
+		&i.DeliveryPartnerID,
+		&i.AssignedAt,
 		&i.DeliveredAt,
 		&i.DeliveryNote,
 		&i.FailureReason,
 		&i.UpdatedByActor,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -1094,7 +1094,7 @@ UPDATE orders SET
     updated_at = NOW(),
     updated_by_actor = $3
 WHERE id = $1
-RETURNING id, user_id, delivery_date, delivery_partner_id, assigned_at, status, payment_method, created_at, updated_at, total_amount_paise, code, batch_id, package_token, ship_address_line, ship_landmark, ship_locality_id, ship_latitude, ship_longitude, ship_accuracy_m, ship_instructions, delivered_at, delivery_note, failure_reason, updated_by_actor
+RETURNING id, code, package_token, user_id, batch_id, delivery_date, status, payment_method, total_amount_paise, ship_address_line, ship_landmark, ship_locality_id, ship_latitude, ship_longitude, ship_accuracy_m, ship_instructions, delivery_partner_id, assigned_at, delivered_at, delivery_note, failure_reason, updated_by_actor, created_at, updated_at
 `
 
 type SetOrderDeliveryFailedParams struct {
@@ -1108,18 +1108,14 @@ func (q *Queries) SetOrderDeliveryFailed(ctx context.Context, arg SetOrderDelive
 	var i Order
 	err := row.Scan(
 		&i.ID,
+		&i.Code,
+		&i.PackageToken,
 		&i.UserID,
+		&i.BatchID,
 		&i.DeliveryDate,
-		&i.DeliveryPartnerID,
-		&i.AssignedAt,
 		&i.Status,
 		&i.PaymentMethod,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 		&i.TotalAmountPaise,
-		&i.Code,
-		&i.BatchID,
-		&i.PackageToken,
 		&i.ShipAddressLine,
 		&i.ShipLandmark,
 		&i.ShipLocalityID,
@@ -1127,10 +1123,14 @@ func (q *Queries) SetOrderDeliveryFailed(ctx context.Context, arg SetOrderDelive
 		&i.ShipLongitude,
 		&i.ShipAccuracyM,
 		&i.ShipInstructions,
+		&i.DeliveryPartnerID,
+		&i.AssignedAt,
 		&i.DeliveredAt,
 		&i.DeliveryNote,
 		&i.FailureReason,
 		&i.UpdatedByActor,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

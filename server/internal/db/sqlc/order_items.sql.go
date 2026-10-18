@@ -77,7 +77,7 @@ func (q *Queries) BatchPreparationSummary(ctx context.Context, batchID pgtype.In
 const createOrderItem = `-- name: CreateOrderItem :one
 INSERT INTO order_items (order_id, variant_id, quantity, unit_price_paise)
 VALUES ($1, $2, $3, $4)
-RETURNING id, order_id, variant_id, quantity, created_at, unit_price_paise
+RETURNING id, order_id, variant_id, quantity, unit_price_paise, created_at
 `
 
 type CreateOrderItemParams struct {
@@ -100,14 +100,14 @@ func (q *Queries) CreateOrderItem(ctx context.Context, arg CreateOrderItemParams
 		&i.OrderID,
 		&i.VariantID,
 		&i.Quantity,
-		&i.CreatedAt,
 		&i.UnitPricePaise,
+		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getOrderItems = `-- name: GetOrderItems :many
-SELECT oi.id, oi.order_id, oi.variant_id, oi.quantity, oi.created_at, oi.unit_price_paise, p.name AS product_name, p.slug AS product_slug,
+SELECT oi.id, oi.order_id, oi.variant_id, oi.quantity, oi.unit_price_paise, oi.created_at, p.name AS product_name, p.slug AS product_slug,
        v.slug AS variant_slug, v.size_label AS product_size_label,
        v.unit AS product_unit, p.image_url AS product_image_url
 FROM order_items oi
@@ -122,8 +122,8 @@ type GetOrderItemsRow struct {
 	OrderID          int64
 	VariantID        int64
 	Quantity         int32
-	CreatedAt        pgtype.Timestamptz
 	UnitPricePaise   int64
+	CreatedAt        pgtype.Timestamptz
 	ProductName      string
 	ProductSlug      string
 	VariantSlug      pgtype.Text
@@ -146,8 +146,8 @@ func (q *Queries) GetOrderItems(ctx context.Context, orderID int64) ([]GetOrderI
 			&i.OrderID,
 			&i.VariantID,
 			&i.Quantity,
-			&i.CreatedAt,
 			&i.UnitPricePaise,
+			&i.CreatedAt,
 			&i.ProductName,
 			&i.ProductSlug,
 			&i.VariantSlug,

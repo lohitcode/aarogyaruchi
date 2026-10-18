@@ -149,7 +149,7 @@ func TestIntegrationOrderLifecycle(t *testing.T) {
 
 	locality, err := q.CreateLocality(ctx, sqlc.CreateLocalityParams{
 		Name: fmt.Sprintf("Testville-%d", rand.Intn(1_000_000)), City: "Hyderabad",
-		Perimeters: []byte("[]"), // NOT NULL since migration 000005
+		Perimeters: []byte("[]"), // NOT NULL in the schema baseline
 	})
 	if err != nil {
 		t.Fatalf("locality: %v", err)
@@ -244,7 +244,7 @@ func TestIntegrationDuplicateIdempotencyKeyDifferentBody(t *testing.T) {
 
 	locality, err := q.CreateLocality(ctx, sqlc.CreateLocalityParams{
 		Name: fmt.Sprintf("Keyville-%d", rand.Intn(1_000_000)), City: "Hyderabad",
-		Perimeters: []byte("[]"), // NOT NULL since migration 000005
+		Perimeters: []byte("[]"), // NOT NULL in the schema baseline
 	})
 	if err != nil {
 		t.Fatalf("locality: %v", err)

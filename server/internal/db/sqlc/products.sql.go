@@ -109,7 +109,7 @@ func (q *Queries) AdminCreateProduct(ctx context.Context, arg AdminCreateProduct
 const adminCreateVariant = `-- name: AdminCreateVariant :one
 INSERT INTO product_variants (product_id, slug, size_label, unit, price_paise, is_available)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, unit, is_available, created_at, updated_at, price_paise, archived_at, slug, size_label, product_id
+RETURNING id, product_id, slug, size_label, unit, price_paise, is_available, archived_at, created_at, updated_at
 `
 
 type AdminCreateVariantParams struct {
@@ -133,15 +133,15 @@ func (q *Queries) AdminCreateVariant(ctx context.Context, arg AdminCreateVariant
 	var i ProductVariant
 	err := row.Scan(
 		&i.ID,
-		&i.Unit,
-		&i.IsAvailable,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.PricePaise,
-		&i.ArchivedAt,
+		&i.ProductID,
 		&i.Slug,
 		&i.SizeLabel,
-		&i.ProductID,
+		&i.Unit,
+		&i.PricePaise,
+		&i.IsAvailable,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -272,7 +272,7 @@ func (q *Queries) AdminListProducts(ctx context.Context) ([]AdminListProductsRow
 }
 
 const adminListVariantsForProduct = `-- name: AdminListVariantsForProduct :many
-SELECT id, unit, is_available, created_at, updated_at, price_paise, archived_at, slug, size_label, product_id FROM product_variants
+SELECT id, product_id, slug, size_label, unit, price_paise, is_available, archived_at, created_at, updated_at FROM product_variants
 WHERE product_id = $1
 ORDER BY archived_at NULLS FIRST, id
 `
@@ -288,15 +288,15 @@ func (q *Queries) AdminListVariantsForProduct(ctx context.Context, productID int
 		var i ProductVariant
 		if err := rows.Scan(
 			&i.ID,
-			&i.Unit,
-			&i.IsAvailable,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.PricePaise,
-			&i.ArchivedAt,
+			&i.ProductID,
 			&i.Slug,
 			&i.SizeLabel,
-			&i.ProductID,
+			&i.Unit,
+			&i.PricePaise,
+			&i.IsAvailable,
+			&i.ArchivedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -382,7 +382,7 @@ UPDATE product_variants SET
     is_available = $6,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, unit, is_available, created_at, updated_at, price_paise, archived_at, slug, size_label, product_id
+RETURNING id, product_id, slug, size_label, unit, price_paise, is_available, archived_at, created_at, updated_at
 `
 
 type AdminUpdateVariantParams struct {
@@ -406,15 +406,15 @@ func (q *Queries) AdminUpdateVariant(ctx context.Context, arg AdminUpdateVariant
 	var i ProductVariant
 	err := row.Scan(
 		&i.ID,
-		&i.Unit,
-		&i.IsAvailable,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.PricePaise,
-		&i.ArchivedAt,
+		&i.ProductID,
 		&i.Slug,
 		&i.SizeLabel,
-		&i.ProductID,
+		&i.Unit,
+		&i.PricePaise,
+		&i.IsAvailable,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -466,7 +466,7 @@ func (q *Queries) GetProductBySlug(ctx context.Context, slug string) (Product, e
 }
 
 const getVariantsForProduct = `-- name: GetVariantsForProduct :many
-SELECT id, unit, is_available, created_at, updated_at, price_paise, archived_at, slug, size_label, product_id FROM product_variants
+SELECT id, product_id, slug, size_label, unit, price_paise, is_available, archived_at, created_at, updated_at FROM product_variants
 WHERE product_id = $1 AND archived_at IS NULL
 ORDER BY id
 `
@@ -482,15 +482,15 @@ func (q *Queries) GetVariantsForProduct(ctx context.Context, productID int64) ([
 		var i ProductVariant
 		if err := rows.Scan(
 			&i.ID,
-			&i.Unit,
-			&i.IsAvailable,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.PricePaise,
-			&i.ArchivedAt,
+			&i.ProductID,
 			&i.Slug,
 			&i.SizeLabel,
-			&i.ProductID,
+			&i.Unit,
+			&i.PricePaise,
+			&i.IsAvailable,
+			&i.ArchivedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -504,7 +504,7 @@ func (q *Queries) GetVariantsForProduct(ctx context.Context, productID int64) ([
 
 const getVariantsForUpdate = `-- name: GetVariantsForUpdate :many
 
-SELECT v.id, v.unit, v.is_available, v.created_at, v.updated_at, v.price_paise, v.archived_at, v.slug, v.size_label, v.product_id, p.name AS product_name
+SELECT v.id, v.product_id, v.slug, v.size_label, v.unit, v.price_paise, v.is_available, v.archived_at, v.created_at, v.updated_at, p.name AS product_name
 FROM product_variants v
 JOIN products p ON p.id = v.product_id
 WHERE v.id = ANY($1::BIGINT[]) AND v.is_available = TRUE AND v.archived_at IS NULL
@@ -513,15 +513,15 @@ FOR UPDATE OF v
 
 type GetVariantsForUpdateRow struct {
 	ID          int64
-	Unit        pgtype.Text
-	IsAvailable pgtype.Bool
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
-	PricePaise  int64
-	ArchivedAt  pgtype.Timestamptz
+	ProductID   int64
 	Slug        pgtype.Text
 	SizeLabel   pgtype.Text
-	ProductID   int64
+	Unit        pgtype.Text
+	PricePaise  int64
+	IsAvailable pgtype.Bool
+	ArchivedAt  pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
 	ProductName string
 }
 
@@ -537,15 +537,15 @@ func (q *Queries) GetVariantsForUpdate(ctx context.Context, dollar_1 []int64) ([
 		var i GetVariantsForUpdateRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.Unit,
-			&i.IsAvailable,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.PricePaise,
-			&i.ArchivedAt,
+			&i.ProductID,
 			&i.Slug,
 			&i.SizeLabel,
-			&i.ProductID,
+			&i.Unit,
+			&i.PricePaise,
+			&i.IsAvailable,
+			&i.ArchivedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 			&i.ProductName,
 		); err != nil {
 			return nil, err
@@ -613,7 +613,7 @@ func (q *Queries) ListCatalogProducts(ctx context.Context) ([]Product, error) {
 }
 
 const listCatalogVariants = `-- name: ListCatalogVariants :many
-SELECT id, unit, is_available, created_at, updated_at, price_paise, archived_at, slug, size_label, product_id FROM product_variants
+SELECT id, product_id, slug, size_label, unit, price_paise, is_available, archived_at, created_at, updated_at FROM product_variants
 WHERE is_available = TRUE AND archived_at IS NULL
   AND product_id = ANY($1::BIGINT[])
 ORDER BY id
@@ -630,15 +630,15 @@ func (q *Queries) ListCatalogVariants(ctx context.Context, dollar_1 []int64) ([]
 		var i ProductVariant
 		if err := rows.Scan(
 			&i.ID,
-			&i.Unit,
-			&i.IsAvailable,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.PricePaise,
-			&i.ArchivedAt,
+			&i.ProductID,
 			&i.Slug,
 			&i.SizeLabel,
-			&i.ProductID,
+			&i.Unit,
+			&i.PricePaise,
+			&i.IsAvailable,
+			&i.ArchivedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

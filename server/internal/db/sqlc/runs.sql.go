@@ -50,7 +50,7 @@ UPDATE delivery_runs SET
     assigned_at = CASE WHEN status = 'draft' THEN NOW() ELSE assigned_at END,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, batch_id, delivery_date, partner_id, name, status, assigned_at, dispatched_at, completed_at, reconciled_at, created_at, updated_at
+RETURNING id, batch_id, delivery_date, name, partner_id, status, assigned_at, dispatched_at, completed_at, reconciled_at, created_at, updated_at
 `
 
 type AssignRunPartnerParams struct {
@@ -65,8 +65,8 @@ func (q *Queries) AssignRunPartner(ctx context.Context, arg AssignRunPartnerPara
 		&i.ID,
 		&i.BatchID,
 		&i.DeliveryDate,
-		&i.PartnerID,
 		&i.Name,
+		&i.PartnerID,
 		&i.Status,
 		&i.AssignedAt,
 		&i.DispatchedAt,
@@ -158,7 +158,7 @@ func (q *Queries) CountOpenStopsForRun(ctx context.Context, runID int64) (CountO
 const createDeliveryRun = `-- name: CreateDeliveryRun :one
 INSERT INTO delivery_runs (batch_id, delivery_date, name, partner_id, status)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, batch_id, delivery_date, partner_id, name, status, assigned_at, dispatched_at, completed_at, reconciled_at, created_at, updated_at
+RETURNING id, batch_id, delivery_date, name, partner_id, status, assigned_at, dispatched_at, completed_at, reconciled_at, created_at, updated_at
 `
 
 type CreateDeliveryRunParams struct {
@@ -182,8 +182,8 @@ func (q *Queries) CreateDeliveryRun(ctx context.Context, arg CreateDeliveryRunPa
 		&i.ID,
 		&i.BatchID,
 		&i.DeliveryDate,
-		&i.PartnerID,
 		&i.Name,
+		&i.PartnerID,
 		&i.Status,
 		&i.AssignedAt,
 		&i.DispatchedAt,
@@ -255,7 +255,7 @@ func (q *Queries) FailStop(ctx context.Context, arg FailStopParams) (int64, erro
 }
 
 const getActiveRunForPartner = `-- name: GetActiveRunForPartner :one
-SELECT id, batch_id, delivery_date, partner_id, name, status, assigned_at, dispatched_at, completed_at, reconciled_at, created_at, updated_at FROM delivery_runs
+SELECT id, batch_id, delivery_date, name, partner_id, status, assigned_at, dispatched_at, completed_at, reconciled_at, created_at, updated_at FROM delivery_runs
 WHERE partner_id = $1 AND status IN ('dispatched', 'in_progress')
 ORDER BY id DESC
 LIMIT 1
@@ -268,8 +268,8 @@ func (q *Queries) GetActiveRunForPartner(ctx context.Context, partnerID pgtype.I
 		&i.ID,
 		&i.BatchID,
 		&i.DeliveryDate,
-		&i.PartnerID,
 		&i.Name,
+		&i.PartnerID,
 		&i.Status,
 		&i.AssignedAt,
 		&i.DispatchedAt,
@@ -282,7 +282,7 @@ func (q *Queries) GetActiveRunForPartner(ctx context.Context, partnerID pgtype.I
 }
 
 const getDeliveryRun = `-- name: GetDeliveryRun :one
-SELECT id, batch_id, delivery_date, partner_id, name, status, assigned_at, dispatched_at, completed_at, reconciled_at, created_at, updated_at FROM delivery_runs WHERE id = $1
+SELECT id, batch_id, delivery_date, name, partner_id, status, assigned_at, dispatched_at, completed_at, reconciled_at, created_at, updated_at FROM delivery_runs WHERE id = $1
 `
 
 func (q *Queries) GetDeliveryRun(ctx context.Context, id int64) (DeliveryRun, error) {
@@ -292,8 +292,8 @@ func (q *Queries) GetDeliveryRun(ctx context.Context, id int64) (DeliveryRun, er
 		&i.ID,
 		&i.BatchID,
 		&i.DeliveryDate,
-		&i.PartnerID,
 		&i.Name,
+		&i.PartnerID,
 		&i.Status,
 		&i.AssignedAt,
 		&i.DispatchedAt,
@@ -306,7 +306,7 @@ func (q *Queries) GetDeliveryRun(ctx context.Context, id int64) (DeliveryRun, er
 }
 
 const getDeliveryRunForUpdate = `-- name: GetDeliveryRunForUpdate :one
-SELECT id, batch_id, delivery_date, partner_id, name, status, assigned_at, dispatched_at, completed_at, reconciled_at, created_at, updated_at FROM delivery_runs WHERE id = $1 FOR UPDATE
+SELECT id, batch_id, delivery_date, name, partner_id, status, assigned_at, dispatched_at, completed_at, reconciled_at, created_at, updated_at FROM delivery_runs WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetDeliveryRunForUpdate(ctx context.Context, id int64) (DeliveryRun, error) {
@@ -316,8 +316,8 @@ func (q *Queries) GetDeliveryRunForUpdate(ctx context.Context, id int64) (Delive
 		&i.ID,
 		&i.BatchID,
 		&i.DeliveryDate,
-		&i.PartnerID,
 		&i.Name,
+		&i.PartnerID,
 		&i.Status,
 		&i.AssignedAt,
 		&i.DispatchedAt,
@@ -452,7 +452,7 @@ func (q *Queries) GetStopWithOrder(ctx context.Context, id int64) (GetStopWithOr
 }
 
 const listDeliveryRuns = `-- name: ListDeliveryRuns :many
-SELECT r.id, r.batch_id, r.delivery_date, r.partner_id, r.name, r.status, r.assigned_at, r.dispatched_at, r.completed_at, r.reconciled_at, r.created_at, r.updated_at, dp.name AS partner_name,
+SELECT r.id, r.batch_id, r.delivery_date, r.name, r.partner_id, r.status, r.assigned_at, r.dispatched_at, r.completed_at, r.reconciled_at, r.created_at, r.updated_at, dp.name AS partner_name,
        (SELECT COUNT(*) FROM run_stops rs WHERE rs.run_id = r.id)::BIGINT AS stop_count
 FROM delivery_runs r
 LEFT JOIN delivery_partners dp ON dp.id = r.partner_id
@@ -474,8 +474,8 @@ type ListDeliveryRunsRow struct {
 	ID           int64
 	BatchID      int64
 	DeliveryDate pgtype.Date
-	PartnerID    pgtype.Int8
 	Name         pgtype.Text
+	PartnerID    pgtype.Int8
 	Status       string
 	AssignedAt   pgtype.Timestamptz
 	DispatchedAt pgtype.Timestamptz
@@ -505,8 +505,8 @@ func (q *Queries) ListDeliveryRuns(ctx context.Context, arg ListDeliveryRunsPara
 			&i.ID,
 			&i.BatchID,
 			&i.DeliveryDate,
-			&i.PartnerID,
 			&i.Name,
+			&i.PartnerID,
 			&i.Status,
 			&i.AssignedAt,
 			&i.DispatchedAt,
@@ -677,7 +677,7 @@ func (q *Queries) ListRunStopsForOrder(ctx context.Context, orderID int64) ([]Li
 }
 
 const listRunsForPartner = `-- name: ListRunsForPartner :many
-SELECT r.id, r.batch_id, r.delivery_date, r.partner_id, r.name, r.status, r.assigned_at, r.dispatched_at, r.completed_at, r.reconciled_at, r.created_at, r.updated_at,
+SELECT r.id, r.batch_id, r.delivery_date, r.name, r.partner_id, r.status, r.assigned_at, r.dispatched_at, r.completed_at, r.reconciled_at, r.created_at, r.updated_at,
        (SELECT COUNT(*) FROM run_stops rs WHERE rs.run_id = r.id)::BIGINT AS stop_count
 FROM delivery_runs r
 WHERE r.partner_id = $1
@@ -695,8 +695,8 @@ type ListRunsForPartnerRow struct {
 	ID           int64
 	BatchID      int64
 	DeliveryDate pgtype.Date
-	PartnerID    pgtype.Int8
 	Name         pgtype.Text
+	PartnerID    pgtype.Int8
 	Status       string
 	AssignedAt   pgtype.Timestamptz
 	DispatchedAt pgtype.Timestamptz
@@ -720,8 +720,8 @@ func (q *Queries) ListRunsForPartner(ctx context.Context, arg ListRunsForPartner
 			&i.ID,
 			&i.BatchID,
 			&i.DeliveryDate,
-			&i.PartnerID,
 			&i.Name,
+			&i.PartnerID,
 			&i.Status,
 			&i.AssignedAt,
 			&i.DispatchedAt,
@@ -843,7 +843,7 @@ UPDATE delivery_runs SET
     status = $3,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, batch_id, delivery_date, partner_id, name, status, assigned_at, dispatched_at, completed_at, reconciled_at, created_at, updated_at
+RETURNING id, batch_id, delivery_date, name, partner_id, status, assigned_at, dispatched_at, completed_at, reconciled_at, created_at, updated_at
 `
 
 type UpdateRunMetaParams struct {
@@ -859,8 +859,8 @@ func (q *Queries) UpdateRunMeta(ctx context.Context, arg UpdateRunMetaParams) (D
 		&i.ID,
 		&i.BatchID,
 		&i.DeliveryDate,
-		&i.PartnerID,
 		&i.Name,
+		&i.PartnerID,
 		&i.Status,
 		&i.AssignedAt,
 		&i.DispatchedAt,

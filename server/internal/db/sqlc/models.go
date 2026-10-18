@@ -37,6 +37,7 @@ type Admin struct {
 type CashHandover struct {
 	ID               int64
 	RunID            int64
+	Status           string
 	ExpectedPaise    int64
 	SubmittedPaise   pgtype.Int8
 	SubmittedNote    pgtype.Text
@@ -45,7 +46,6 @@ type CashHandover struct {
 	ConfirmedPaise   pgtype.Int8
 	ConfirmedAt      pgtype.Timestamptz
 	DiscrepancyPaise pgtype.Int8
-	Status           string
 	CreatedAt        pgtype.Timestamptz
 }
 
@@ -80,8 +80,8 @@ type DeliveryRun struct {
 	ID           int64
 	BatchID      int64
 	DeliveryDate pgtype.Date
-	PartnerID    pgtype.Int8
 	Name         pgtype.Text
+	PartnerID    pgtype.Int8
 	Status       string
 	AssignedAt   pgtype.Timestamptz
 	DispatchedAt pgtype.Timestamptz
@@ -106,8 +106,8 @@ type Locality struct {
 	Name       string
 	City       string
 	IsActive   pgtype.Bool
-	CreatedAt  pgtype.Timestamptz
 	Perimeters []byte
+	CreatedAt  pgtype.Timestamptz
 }
 
 type LocationSample struct {
@@ -145,18 +145,14 @@ type OperatingSetting struct {
 
 type Order struct {
 	ID                int64
+	Code              pgtype.Text
+	PackageToken      pgtype.Text
 	UserID            int64
+	BatchID           pgtype.Int8
 	DeliveryDate      pgtype.Date
-	DeliveryPartnerID pgtype.Int8
-	AssignedAt        pgtype.Timestamptz
 	Status            pgtype.Text
 	PaymentMethod     string
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
 	TotalAmountPaise  int64
-	Code              pgtype.Text
-	BatchID           pgtype.Int8
-	PackageToken      pgtype.Text
 	ShipAddressLine   pgtype.Text
 	ShipLandmark      pgtype.Text
 	ShipLocalityID    pgtype.Int8
@@ -164,10 +160,14 @@ type Order struct {
 	ShipLongitude     pgtype.Float8
 	ShipAccuracyM     pgtype.Float8
 	ShipInstructions  pgtype.Text
+	DeliveryPartnerID pgtype.Int8
+	AssignedAt        pgtype.Timestamptz
 	DeliveredAt       pgtype.Timestamptz
 	DeliveryNote      pgtype.Text
 	FailureReason     pgtype.Text
 	UpdatedByActor    pgtype.Text
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
 }
 
 type OrderBatch struct {
@@ -186,8 +186,8 @@ type OrderItem struct {
 	OrderID        int64
 	VariantID      int64
 	Quantity       int32
-	CreatedAt      pgtype.Timestamptz
 	UnitPricePaise int64
+	CreatedAt      pgtype.Timestamptz
 }
 
 type OrderStatusHistory struct {
@@ -220,15 +220,15 @@ type Product struct {
 
 type ProductVariant struct {
 	ID          int64
-	Unit        pgtype.Text
-	IsAvailable pgtype.Bool
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
-	PricePaise  int64
-	ArchivedAt  pgtype.Timestamptz
+	ProductID   int64
 	Slug        pgtype.Text
 	SizeLabel   pgtype.Text
-	ProductID   int64
+	Unit        pgtype.Text
+	PricePaise  int64
+	IsAvailable pgtype.Bool
+	ArchivedAt  pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
 }
 
 type PushSubscription struct {

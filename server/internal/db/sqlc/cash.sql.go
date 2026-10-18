@@ -43,7 +43,7 @@ func (q *Queries) ConfirmCashHandover(ctx context.Context, arg ConfirmCashHandov
 
 const createCashHandover = `-- name: CreateCashHandover :one
 INSERT INTO cash_handovers (run_id, expected_paise) VALUES ($1, $2)
-RETURNING id, run_id, expected_paise, submitted_paise, submitted_note, submitted_at, admin_id, confirmed_paise, confirmed_at, discrepancy_paise, status, created_at
+RETURNING id, run_id, status, expected_paise, submitted_paise, submitted_note, submitted_at, admin_id, confirmed_paise, confirmed_at, discrepancy_paise, created_at
 `
 
 type CreateCashHandoverParams struct {
@@ -57,6 +57,7 @@ func (q *Queries) CreateCashHandover(ctx context.Context, arg CreateCashHandover
 	err := row.Scan(
 		&i.ID,
 		&i.RunID,
+		&i.Status,
 		&i.ExpectedPaise,
 		&i.SubmittedPaise,
 		&i.SubmittedNote,
@@ -65,14 +66,13 @@ func (q *Queries) CreateCashHandover(ctx context.Context, arg CreateCashHandover
 		&i.ConfirmedPaise,
 		&i.ConfirmedAt,
 		&i.DiscrepancyPaise,
-		&i.Status,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getCashHandoverByRun = `-- name: GetCashHandoverByRun :one
-SELECT id, run_id, expected_paise, submitted_paise, submitted_note, submitted_at, admin_id, confirmed_paise, confirmed_at, discrepancy_paise, status, created_at FROM cash_handovers WHERE run_id = $1
+SELECT id, run_id, status, expected_paise, submitted_paise, submitted_note, submitted_at, admin_id, confirmed_paise, confirmed_at, discrepancy_paise, created_at FROM cash_handovers WHERE run_id = $1
 `
 
 func (q *Queries) GetCashHandoverByRun(ctx context.Context, runID int64) (CashHandover, error) {
@@ -81,6 +81,7 @@ func (q *Queries) GetCashHandoverByRun(ctx context.Context, runID int64) (CashHa
 	err := row.Scan(
 		&i.ID,
 		&i.RunID,
+		&i.Status,
 		&i.ExpectedPaise,
 		&i.SubmittedPaise,
 		&i.SubmittedNote,
@@ -89,14 +90,13 @@ func (q *Queries) GetCashHandoverByRun(ctx context.Context, runID int64) (CashHa
 		&i.ConfirmedPaise,
 		&i.ConfirmedAt,
 		&i.DiscrepancyPaise,
-		&i.Status,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const listHandoverHistory = `-- name: ListHandoverHistory :many
-SELECT ch.id, ch.run_id, ch.expected_paise, ch.submitted_paise, ch.submitted_note, ch.submitted_at, ch.admin_id, ch.confirmed_paise, ch.confirmed_at, ch.discrepancy_paise, ch.status, ch.created_at, r.delivery_date, dp.name AS partner_name
+SELECT ch.id, ch.run_id, ch.status, ch.expected_paise, ch.submitted_paise, ch.submitted_note, ch.submitted_at, ch.admin_id, ch.confirmed_paise, ch.confirmed_at, ch.discrepancy_paise, ch.created_at, r.delivery_date, dp.name AS partner_name
 FROM cash_handovers ch
 JOIN delivery_runs r ON r.id = ch.run_id
 LEFT JOIN delivery_partners dp ON dp.id = r.partner_id
@@ -107,6 +107,7 @@ LIMIT $1
 type ListHandoverHistoryRow struct {
 	ID               int64
 	RunID            int64
+	Status           string
 	ExpectedPaise    int64
 	SubmittedPaise   pgtype.Int8
 	SubmittedNote    pgtype.Text
@@ -115,7 +116,6 @@ type ListHandoverHistoryRow struct {
 	ConfirmedPaise   pgtype.Int8
 	ConfirmedAt      pgtype.Timestamptz
 	DiscrepancyPaise pgtype.Int8
-	Status           string
 	CreatedAt        pgtype.Timestamptz
 	DeliveryDate     pgtype.Date
 	PartnerName      pgtype.Text
@@ -133,6 +133,7 @@ func (q *Queries) ListHandoverHistory(ctx context.Context, maxRows int32) ([]Lis
 		if err := rows.Scan(
 			&i.ID,
 			&i.RunID,
+			&i.Status,
 			&i.ExpectedPaise,
 			&i.SubmittedPaise,
 			&i.SubmittedNote,
@@ -141,7 +142,6 @@ func (q *Queries) ListHandoverHistory(ctx context.Context, maxRows int32) ([]Lis
 			&i.ConfirmedPaise,
 			&i.ConfirmedAt,
 			&i.DiscrepancyPaise,
-			&i.Status,
 			&i.CreatedAt,
 			&i.DeliveryDate,
 			&i.PartnerName,
