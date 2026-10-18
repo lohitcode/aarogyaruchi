@@ -119,3 +119,16 @@ Super Admin (owner)
 | Gym Dashboard | Gym owners | View deliveries, commission |
 | Admin Panel | Admins | Manage gyms, products, orders |
 | Delivery App | Delivery partners | View & deliver orders |
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+Copyright (c) 2026 Pinninti Hari Krishna.
+
+Note for self-hosting: every credential this project needs lives in
+environment variables. Nothing secret is committed — `server/secrets/*.env`
+are SOPS/age-encrypted (see [`.sops.yaml`](.sops.yaml)), and the
+`*.env.example` files document the shape of each variable.
