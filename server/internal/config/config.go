@@ -84,7 +84,10 @@ func Load() (*Config, error) {
 		Port:            getEnv("PORT", "8080"),
 		DatabaseURL:     getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/aarogya_ruchi?sslmode=disable"),
 		CacheURL:        getEnv("CACHE_URL", "localhost:6379"),
-		CachePassword:   getEnv("CACHE_PASSWORD", ""),
+		// Accept CACHE_PASSWORD, but fall back to VALKEY_PASSWORD: compose
+		// injects the latter into the valkey/server containers, so locally
+		// (go run) a single VALKEY_PASSWORD in .env is enough.
+		CachePassword: getEnv("CACHE_PASSWORD", getEnv("VALKEY_PASSWORD", "")),
 		MSG91AuthKey:    getEnv("MSG91_AUTH_KEY", ""),
 		MSG91TemplateID: getEnv("MSG91_TEMPLATE_ID", ""),
 	}
