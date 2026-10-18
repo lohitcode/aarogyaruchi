@@ -258,7 +258,7 @@ bun run test                 # Vitest across the workspace
 
 Nothing is ever built on the server. Secrets are hydrated on the box by decrypting the SOPS file that lives in this repo as ciphertext.
 
-> **Squashed migrations:** databases created by the previous 000001–000007 chain record version 7, and golang-migrate errors when a recorded version has no file. Before shipping the current baseline to such an environment, reset its bookkeeping to the baseline version — the exact commands and ordering caveats are in the header of [`000001_init.up.sql`](server/internal/db/migrations/000001_init.up.sql). Fresh databases need nothing.
+> **One baseline migration.** The schema is a single [`000001_init`](server/internal/db/migrations/000001_init.up.sql) file rather than an accumulated chain, so bringing up an environment is one step: start Postgres and boot the API — migrations run at boot. The baseline also seeds the service areas, the operating-settings row and the full product catalog, so a fresh install has a working storefront with no separate seed script.
 
 ## Security
 

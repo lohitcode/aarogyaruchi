@@ -5,25 +5,14 @@
 -- notification states, sort-order removal). It reproduces the schema those
 -- migrations produced, with the legacy churn removed: no dropped-then-created
 -- columns, no stale constraint/PK/sequence names, no retired catalog rows.
--- The schema is byte-for-byte equivalent (same column types, nullability,
--- defaults, CHECKs, FKs, partial indexes), so existing databases need no DDL.
 --
--- !! REQUIRED ONE-TIME STEP for databases built by the old chain !!
+-- It is the only migration: an environment starts from this file. If you are
+-- bringing up a database that was created by the old chain instead of
+-- resetting it, note that golang-migrate refuses to run when the recorded
+-- version has no matching file ("no migration found for version 7") — clear
+-- the stale row first, no DDL needed since the schema already matches:
 --
--- golang-migrate refuses to run when the recorded version has no file:
---     no migration found for version 7: file does not exist
--- So before shipping this migration set to an existing environment, reset its
--- bookkeeping to the baseline version (no DDL is executed either way):
---
---     psql "$DATABASE_URL" -c "UPDATE schema_migrations SET version = 1, dirty = false"
---     # or: migrate -path internal/db/migrations -database "$DATABASE_URL" force 1
---
--- Ordering matters: do the reset and the deploy back-to-back. While the
--- environment records version 1 but still runs the OLD binary, a restart of
--- that old binary would try to re-apply 000002..000007, fail on the first
--- existing table, and leave the version dirty (re-run the reset to clear it).
---
--- Fresh databases just run this — no manual step.
+--     psql "$DATABASE_URL" -c "DELETE FROM schema_migrations"
 
 BEGIN;
 
